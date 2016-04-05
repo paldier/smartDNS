@@ -1,0 +1,64 @@
+为了支撑大业务量的清洗中心, 必须实现智能调度系统, 一般认为此系统为
+两级调度机制, 第一级为粗粒度的智能DNS, 第二级为清洗中心内部的任务
+调度. 
+
+本项目致力于实现智能DNS, 主要满足以下需求:
+1) 稳定, 长时间可靠运行
+        单机多进程模型, master + worker + monitor
+        主 + 辅布置
+        单节点集群
+2) 高效, 以C10M为目标
+        基于阻塞socket
+        基于epoll事件
+        基于DPDK
+3) 安全, 能够应付普通的DDoS攻击
+        缓存加速
+        信誉黑名单
+        查询限速
+4) 简单, 仅支持权威DNS, 不支持递归
+        定位为权威DNS
+5) 兼容, 支持部分Bind特性, 以便与现网设备对接
+        相同格式的配置文件(精简版)
+        更新模式(NOTIFY/IXFR/UPDATE)
+6) 灵活, 支持在线操控
+        支持外围接口
+        支持特殊的控制报文
+7) 智能, 能够参考GeoIP/负载等信息, 计算应答信息
+        支持GeoIP
+        支持清洗中心负载
+
+本项目采用迭代式开发, 在实现基本功能的基础上, 根据需求变更渐进式调
+整; 最后希望能够在稳定的基础上, 开源共享!
+
+1. 基本信息
+    c语言
+    cmake编译
+    check单元测试
+
+2. 编译说明
+    $ cd path-to-project
+    $ mkdir build
+    $ cd build
+    $ cmake ..
+    $ make test             #运行单元测试(*可忽略)
+    $ make
+    $ ./bin/smartDNS ../conf/example.conf
+
+3. 目录结构
+    README                  说明文档
+
+    conf                    典型配置示例
+        example.zone            示例域example的配置
+        master.conf             主程序配置示例
+
+    src                     源代码目录
+        main.c                  程序启动入口
+        include                 所有模块儿暴露的公共接口
+        worker                  工作进程, 用于处理DNS请求
+        monitor                 监控进程, 用于处理外围交互事件
+        master                  主进程, 解析配置, 启动并监控其他进程
+
+    check                   单元测试目录
+        check_main.c            单元测试启动入口
+        check_xxx.c             其他单元测试用例
+
