@@ -15,11 +15,18 @@ int main(int argc, char **argv)
 
     /* 处理命令行参数 */
     if (get_options(argc, argv, &g_glb_vars) == RET_ERR) {
+        usage_help();
         return 1;
     }
 
+    /* 输出帮助信息并退出, <NOTE>帮助信息和其他参数互斥 */
+    if (g_glb_vars.process_role & PROCESS_ROLE_HELPER) {
+        usage_help();
+        return 0;
+    }
+
     /* 解析配置文件 */
-    if (cfg_parse() == RET_ERR) {
+    if (cfg_parse(&g_glb_vars) == RET_ERR) {
         return 1;
     }
 

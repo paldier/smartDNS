@@ -5,9 +5,9 @@
 #define CONF_FILE "/etc/smartDNS/master.conf"
 #define CONF_FILE_DIR "/etc/smartDNS/"
 
-int cfg_parse()
+int cfg_parse(GLB_VARS *glb_vars)
 {
-    return RET_OK;
+    return RET_ERR;
 }
 
 

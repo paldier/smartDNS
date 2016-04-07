@@ -3,16 +3,16 @@
 
 /** 
  * 解析配置文件 
- * @param: void
+ * @param glb_vars: [in][out], 全局数据结构集
  * @retval: RET_OK/RET_ERR
  */
-int cfg_parse(void);
+int cfg_parse(GLB_VARS *glb_vars);
 
 /**
  * 解析命令行
  * @param argc: [in], 参数个数
  * @param argv: [in], 参数指针数组
- * @param glb_vars: [in], 全局数据结构集
+ * @param glb_vars: [in][out], 全局数据结构集
  * @retval: RET_OK/RET_ERR
  *
  * @note:
@@ -20,6 +20,13 @@ int cfg_parse(void);
  *      2) 多个参数利用空格隔开
  */
 int get_options(int argc, char **argv, GLB_VARS *glb_vars);
+
+/**
+ * 输出使用说明, 包括命令行参数等
+ * @param: void
+ * @retval: void
+ */
+void usage_help();
 
 #endif /* CFG_GLB_H */
 

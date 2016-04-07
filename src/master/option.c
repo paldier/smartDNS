@@ -93,17 +93,17 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
         switch (opt_id) {
             case '?':
             case 'h':       /* 打印帮助信息 */
-                glb_vars->process_role = PROCESS_ROLE_HELPER;
+                glb_vars->process_role |= PROCESS_ROLE_HELPER;
                 break;
             case 't':       /* 测试配置文件格式 */
-                glb_vars->process_role = PROCESS_ROLE_TESTER;
+                glb_vars->process_role |= PROCESS_ROLE_TESTER;
                 break;
             case 'f':       /* 指定配置文件 */
                 glb_vars->conf_file = opt_val;
                 break;
             case 's':
                 glb_vars->signal= opt_val;
-                glb_vars->process_role = PROCESS_ROLE_SIGNALLER;
+                glb_vars->process_role |= PROCESS_ROLE_SIGNALLER;
 
                 if (strcmp(glb_vars->signal, "stop") == 0
                         || strcmp(glb_vars->signal, "quit") == 0
@@ -124,6 +124,15 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
     return RET_OK;
 }
 
-
+void usage_help()
+{
+    LOG_ERR("\nUsage: smartDNS [-?ht] [-s signal] [-f filename]");
+    LOG_ERR("\nOptions:");
+    LOG_ERR("\t-?,-h         : show help");
+    LOG_ERR("\t-t            : test configuration and exit");
+    LOG_ERR("\t-s signal     : send signal to a master process, ");
+    LOG_ERR("\t                     <stop, quit, reopen, reload>");
+    LOG_ERR("\t-f filename   : set configuration file");
+}
 
 
