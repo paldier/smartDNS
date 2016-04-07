@@ -4,9 +4,11 @@ list(APPEND CHECK_SRCS ${CHECK_FILES})
 
 #包含头文件
 include_directories(${CMAKE_SOURCE_DIR}/src/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/master)
 
 #指定生成目标
 add_executable(check_smartDNS ${CHECK_SRCS})
+target_link_libraries(check_smartDNS  ${CHECK_LIBRARIES} master)
 
 #启用测试
 enable_testing()
