@@ -22,8 +22,11 @@ enum{
 /* 聚集分散的全局变量 */
 typedef struct st_glb_variables{
     int process_role;               /* 进程角色 */
-    char *conf_file;                /* 配置文件, -f/-t指定 */
+    char *conf_file;                /* 配置文件, -f指定 */
     char *signal;                   /* 处理信号, -s指定 */
+    void *conf;                     /* 配置信息在内存中的组织形式 */
+    void *zone;                     /* 域信息 */
+    void *sh_mem;                   /* 共享内存 */
 }GLB_VARS;
 
 #endif

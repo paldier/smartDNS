@@ -6,7 +6,7 @@
 #include "option.h"
 
 /* just for test context, originally defined by main.c */
-GLB_VARS g_glb_vars;
+static GLB_VARS g_glb_vars;
 
 static void setup(void)
 {

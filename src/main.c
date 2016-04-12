@@ -34,6 +34,9 @@ int main(int argc, char **argv)
     /* 日志初始化 */
     log_init();
 
+    /* 解析域配置信息 */
+    zone_parse(&g_glb_vars);
+
     /* 报文收发引擎初始化 */
     pkt_engine_init();
 
