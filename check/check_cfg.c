@@ -10,18 +10,16 @@ static GLB_VARS s_glb_vars;
 START_TEST (test_get_token_handler)
 {
     token_handler tmp_hdler;
-    int i = 0;
 
     /* right thing */
-    while(1) {
-        if (!strcmp(s_cfg_type_arr[i].name, "")) {
-            break;
-        }
-        tmp_hdler = get_token_handler(s_cfg_type_arr[i].name);
-        ck_assert_int_eq((tmp_hdler - s_cfg_type_arr[i].dispose), 0);
+    tmp_hdler = get_token_handler("zone");
+    ck_assert_int_eq((tmp_hdler - create_zone_cfg), 0);
 
-        i++;
-    }
+    tmp_hdler = get_token_handler("type");
+    ck_assert_int_eq((tmp_hdler - set_dev_type), 0);
+
+    tmp_hdler = get_token_handler("file");
+    ck_assert_int_eq((tmp_hdler - save_zone_info_file), 0);
 
     /* NOT right thing */
     tmp_hdler = get_token_handler("hello");
@@ -40,6 +38,8 @@ END_TEST
 
 START_TEST (test_get_a_token)
 {
+    /* snprintf()按照指定长度形成字符串, 并自动在结尾处插入'\0'字符,
+     * <NOTE>指定的长度包括最后'\0' */
     char tmp_line[LINE_LEN_MAX] = {0};
     char *tmp_token;
     int tmp_len;
@@ -47,7 +47,7 @@ START_TEST (test_get_a_token)
 
     /*** right thing ***/
     /* keyword */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "hello");
+    snprintf(tmp_line, LINE_LEN_MAX, "hello");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("hello"));
     ck_assert_int_eq((tmp_token-tmp_line), 0);
@@ -55,7 +55,7 @@ START_TEST (test_get_a_token)
 
 
     /* 空格 + keyword */
-    snprintf(tmp_line, LINE_LEN_MAX-1, " hello");
+    snprintf(tmp_line, LINE_LEN_MAX, " hello");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("hello"));
     ck_assert_int_eq((tmp_token - tmp_line - 1), 0);
@@ -63,7 +63,7 @@ START_TEST (test_get_a_token)
 
 
     /* keyword + 空格 */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "hello ");
+    snprintf(tmp_line, LINE_LEN_MAX, "hello ");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("hello"));
     ck_assert_int_eq((tmp_token - tmp_line), 0);
@@ -74,14 +74,14 @@ START_TEST (test_get_a_token)
     ck_assert_int_eq(tmp_ret, RET_OK);
 
     /* keyword + ; */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "hello;");
+    snprintf(tmp_line, LINE_LEN_MAX, "hello;");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("hello"));
     ck_assert_int_eq((tmp_token - tmp_line), 0);
     ck_assert_int_eq(tmp_ret, RET_COMMENT);
 
     /* keyword + { */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "hello {");
+    snprintf(tmp_line, LINE_LEN_MAX, "hello {");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("hello"));
     ck_assert_int_eq((tmp_token - tmp_line), 0);
@@ -92,7 +92,7 @@ START_TEST (test_get_a_token)
     ck_assert_int_eq(tmp_ret, RET_BRACE);
 
     /* \t + } + ; + 空格 */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "\t}; ");
+    snprintf(tmp_line, LINE_LEN_MAX, "\t}; ");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("}"));
     ck_assert_int_eq((tmp_token - tmp_line - strlen("\t")), 0); 
@@ -103,7 +103,7 @@ START_TEST (test_get_a_token)
     ck_assert_int_eq(tmp_ret, RET_COMMENT);
 
     /* \" (magic 1 present ") */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "\"keys.conf\"");
+    snprintf(tmp_line, LINE_LEN_MAX, "\"keys.conf\"");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("keys.conf"));
     ck_assert_int_eq((tmp_token - tmp_line - 1), 0);
@@ -111,35 +111,35 @@ START_TEST (test_get_a_token)
 
 
     /* ; */
-    snprintf(tmp_line, LINE_LEN_MAX-1, " ; hello world");
+    snprintf(tmp_line, LINE_LEN_MAX, " ; hello world");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, 0);
     ck_assert_int_eq(tmp_token, 0); 
     ck_assert_int_eq(tmp_ret, RET_COMMENT);
 
     /* // */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "  // hello world");
+    snprintf(tmp_line, LINE_LEN_MAX, "  // hello world");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, 0);
     ck_assert_int_eq(tmp_token, 0); 
     ck_assert_int_eq(tmp_ret, RET_COMMENT);
 
     /* # */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "\t # hello world");
+    snprintf(tmp_line, LINE_LEN_MAX, "\t # hello world");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, 0);
     ck_assert_int_eq(tmp_token, 0); 
     ck_assert_int_eq(tmp_ret, RET_COMMENT);
 
     /* '/\*' */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "/* hello");
+    snprintf(tmp_line, LINE_LEN_MAX, "/* hello");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("/*"));
     ck_assert_int_eq((tmp_token - tmp_line), 0); 
     ck_assert_int_eq(tmp_ret, RET_MULTI_COMMENT);
 
     /* '*\/' */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "hi  */ hello");
+    snprintf(tmp_line, LINE_LEN_MAX, "hi  */ hello");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("hi"));
     ck_assert_int_eq((tmp_token - tmp_line), 0); 
@@ -150,7 +150,7 @@ START_TEST (test_get_a_token)
     ck_assert_int_eq(tmp_ret, RET_MULTI_COMMENT);
 
     /* 换行符 */
-    snprintf(tmp_line, LINE_LEN_MAX-1, " \n ");
+    snprintf(tmp_line, LINE_LEN_MAX, " \n ");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, 0);
     ck_assert_int_eq(tmp_token, 0); 
@@ -166,17 +166,17 @@ START_TEST (test_get_a_token)
     /* NOT right thing */
 
     /* ' */
-    snprintf(tmp_line, LINE_LEN_MAX-1, "'keys.conf'");
+    snprintf(tmp_line, LINE_LEN_MAX, "'keys.conf'");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_ret, RET_ERR);
-    snprintf(tmp_line, LINE_LEN_MAX-1, "\'keys.conf\'");
+    snprintf(tmp_line, LINE_LEN_MAX, "\'keys.conf\'");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     tmp_ret = get_a_token(NULL, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
-    snprintf(tmp_line, LINE_LEN_MAX-1, "hello world");
+    snprintf(tmp_line, LINE_LEN_MAX, "hello world");
     tmp_ret = get_a_token(tmp_line, NULL, &tmp_len);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
@@ -187,12 +187,26 @@ END_TEST
 
 START_TEST (test_cfg_parse_RET_OK)
 {
+    ZONE_CFG_INFO *zone_cfg;
     int tmp_ret;
 
+    /* 解析前验证 */
+    SDNS_MEMSET(&s_glb_vars, 0, sizeof(GLB_VARS));
+    zone_cfg = get_zone_cfg_slow(&s_glb_vars, "example.com");
+    ck_assert_int_eq(zone_cfg, NULL);
+
     /* 文件路径相对于可执行文件路径~/build/check/check_smartDNS */
-    s_glb_vars.conf_file = strdup("../../conf/master.conf");
+    snprintf(s_glb_vars.conf_file, CONF_FILE_LEN, "%s", 
+            "../../conf/master.conf");
     tmp_ret = cfg_parse(&s_glb_vars);
     ck_assert_int_eq(tmp_ret, RET_OK);
+
+    /* 验证解析结果 */
+    zone_cfg = get_zone_cfg_slow(&s_glb_vars, "example.com");
+    ck_assert_int_ne(zone_cfg, NULL);
+    ck_assert_str_eq(zone_cfg->name, "example.com");
+    ck_assert_str_eq(zone_cfg->file, "example.zone");
+    ck_assert_int_eq(zone_cfg->dev_type, 1); 
 }
 END_TEST
 

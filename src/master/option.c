@@ -99,10 +99,10 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
                 glb_vars->process_role |= PROCESS_ROLE_TESTER;
                 break;
             case 'f':       /* 指定配置文件 */
-                glb_vars->conf_file = strdup(opt_val);
+                snprintf(glb_vars->conf_file, CONF_FILE_LEN, "%s", opt_val);
                 break;
             case 's':
-                glb_vars->signal= opt_val;
+                snprintf(glb_vars->signal, SIGNAL_STR_LEN, "%s", opt_val);
                 glb_vars->process_role |= PROCESS_ROLE_SIGNALLER;
 
                 if (strcmp(glb_vars->signal, "stop") == 0

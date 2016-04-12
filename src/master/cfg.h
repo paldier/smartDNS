@@ -15,20 +15,33 @@
  *  4) 其余遵照Bind配置文件
  */
 
-#define LINE_LEN_MAX    512
+
+#define LINE_LEN_MAX    512         /* 配置文件单行包含的最大字符数 */
+#define TOKEN_NAME_LEN_MAX  32      /* token字符串的最大长度 */
 
 /**
  * 定义master.conf控制文件支持的元字符
  */
 typedef int (*token_handler)(GLB_VARS *glb_vars, char *val);
 typedef struct st_cfg_token {
-#define TOKEN_NAME_LEN_MAX  32
-#define TOKEN_VAL_LEN_MAX   128
-#define TOKEN_NUM_LINE_MAX  5
-    char name[TOKEN_NAME_LEN_MAX];   /* 元数据类型名 */
-    token_handler dispose;              /* 处理句柄 */
+    char name[TOKEN_NAME_LEN_MAX];  /* 元数据类型名 */
+    token_handler dispose;          /* 处理句柄 */
 }CFG_TYPE;
-extern CFG_TYPE s_cfg_type_arr[];       /* <NOTE>仅仅为了check测试!!! */
+
+/**
+ * 定义.conf配置信息结构
+ */
+typedef struct st_zone_info {
+    char name[TOKEN_NAME_LEN_MAX];  /* 域名 */
+    char file[TOKEN_NAME_LEN_MAX];  /* 域配置文件 */
+
+    unsigned int dev_type:1;        /* 地位: master or slave */
+}ZONE_CFG_INFO;
+typedef struct st_cfg_info {
+    ZONE_CFG_INFO **zone_cfg;       /* 域控制信息 */
+    int zone_cfg_num;
+    int zone_cfg_total;
+}CFG_INFO;
 
 /**
  * 获取token对应的处理函数
@@ -38,11 +51,26 @@ extern CFG_TYPE s_cfg_type_arr[];       /* <NOTE>仅仅为了check测试!!! */
 token_handler get_token_handler(char *token);
 
 /**
+ * 由域名获取对应的域配置信息结构
+ * @param glb_vars: [in], 全局配置结构
+ * @param zone_name: [in], 域名
+ * @retval: NULL/查找结果
+ */
+ZONE_CFG_INFO *get_zone_cfg_slow(GLB_VARS *glb_vars, char *zone_name);
+
+/**
+ * 调试, 打印.conf配置文件解析结果
+ * @param glb_vars: [in], 全局配置结构
+ * @retval: void
+ */
+void print_cfg_parse_res(GLB_VARS *glb_vars);
+
+/**
  * 创建域管理信息数据结构
  * @param val: [in], zone对应的配置信息
  * @retval: RET_OK/RET_ERR
  */
-int create_zone_manager(GLB_VARS *glb_vars, char *val);
+int create_zone_cfg(GLB_VARS *glb_vars, char *val);
 
 /**
  * 设置当前设备的身份, 主/辅

@@ -165,19 +165,19 @@ START_TEST (test_get_options_RET_OK)
         (void)memset(&tmp_str[j][0], 0, OPTION_STR_LEN_MAX);\
     }\
     tmp_opt[0] = &tmp_str[0][0];\
-    snprintf(tmp_str[0], OPTION_STR_LEN_MAX-1, "%s", "check_test");\
+    snprintf(tmp_str[0], OPTION_STR_LEN_MAX, "%s", "check_test");\
     i++;\
 }while(0);
 
 #define INSERT_OPT_ARR(str) do{\
     char **_tmp_p_char = &tmp_opt[i];\
-    snprintf(&tmp_str[i][0], OPTION_STR_LEN_MAX-1, "%s", str);\
+    snprintf(&tmp_str[i][0], OPTION_STR_LEN_MAX, "%s", str);\
     *_tmp_p_char = &tmp_str[i][0];\
     i++;\
 }while(0);
 
 #define INSERT_OPT_ARR_0(str) do{\
-    snprintf(&tmp_str[1][0], OPTION_STR_LEN_MAX-1, "%s", str);\
+    snprintf(&tmp_str[1][0], OPTION_STR_LEN_MAX, "%s", str);\
     tmp_opt[1] = &tmp_str[1][0];\
     i = 2;\
 }while(0);

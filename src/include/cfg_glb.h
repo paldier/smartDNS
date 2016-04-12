@@ -2,11 +2,18 @@
 #define CFG_GLB_H
 
 /** 
- * 解析配置文件 
+ * 解析.conf配置文件 
  * @param glb_vars: [in][out], 全局数据结构集
  * @retval: RET_OK/RET_ERR
  */
 int cfg_parse(GLB_VARS *glb_vars);
+
+/**
+ * 释放解析.conf配置文件时分配的内存资源
+ * @param glb_vars: [in][out], 全局数据结构集
+ * @retval: void
+ */
+void release_conf(GLB_VARS *glb_vars);
 
 /**
  * 解析命令行

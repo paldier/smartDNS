@@ -19,14 +19,26 @@ enum{
     PROCESS_ROLE_MAX = 1<<15
 };
 
-/* 聚集分散的全局变量 */
+/**
+ * 聚集分散的全局变量 
+ * <NOTE>
+ *  1) 使用void *是为了避免过多的头文件引用
+ */
 typedef struct st_glb_variables{
+#define CONF_FILE_LEN   32
+#define SIGNAL_STR_LEN  32
     int process_role;               /* 进程角色 */
-    char *conf_file;                /* 配置文件, -f指定 */
-    char *signal;                   /* 处理信号, -s指定 */
-    void *conf;                     /* 配置信息在内存中的组织形式 */
-    void *zone;                     /* 域信息 */
+    char conf_file[CONF_FILE_LEN];  /* 配置文件, -f指定 */
+    char signal[SIGNAL_STR_LEN];    /* 处理信号, -s指定 */
+    void *conf;                     /* .conf配置信息, CFG_INFO */
+    void **zone;                    /* .zone域信息, ZONE */
     void *sh_mem;                   /* 共享内存 */
 }GLB_VARS;
+
+/* 内存分配宏, 便于后续拓展 */
+#define SDNS_MALLOC     malloc
+#define SDNS_MEMSET     memset
+#define SDNS_REALLOC    realloc 
+#define SDNS_FREE       free
 
 #endif

@@ -18,7 +18,7 @@ if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to 'Release' as none was specified.")
     set(CMAKE_BUILD_TYPE Release)
 endif() 
-set(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} -O0 -g -ggdb")
+set(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} -O0 -g -ggdb -DDNS_DEBUG")
 set(CMAKE_C_FLAGS_RELEASE "$ENV{CFLAGS} -O3")
 
 #指定编译子目录
