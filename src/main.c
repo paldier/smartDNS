@@ -13,6 +13,11 @@ int main(int argc, char **argv)
     /* 初始化全局变量 */
     (void)memset((void *)&g_glb_vars, 0, sizeof(GLB_VARS));
 
+    /* 日志初始化 */
+    if (log_init(&g_glb_vars) == RET_ERR) {
+        return 1;
+    }
+
     /* 处理命令行参数 */
     if (get_options(argc, argv, &g_glb_vars) == RET_ERR) {
         usage_help();
@@ -31,9 +36,6 @@ int main(int argc, char **argv)
     }
 
 #if 0
-    /* 日志初始化 */
-    log_init();
-
     /* 解析域配置信息 */
     zone_parse(&g_glb_vars);
 

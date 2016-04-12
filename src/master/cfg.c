@@ -31,7 +31,7 @@ int cfg_parse(GLB_VARS *glb_vars)
     }
     fd = fopen(glb_vars->conf_file, "r");
     if (fd == NULL) {
-        LOG_ERR("open [%s] file failed! [%s]", 
+        SDNS_LOG_ERR("open [%s] file failed! [%s]", 
                 glb_vars->conf_file, strerror(errno));
         return RET_ERR;
     }
@@ -47,7 +47,7 @@ int cfg_parse(GLB_VARS *glb_vars)
         /* 获取key */
         tmp_ret = get_a_token(tmp_buf, &token_p, &token_len);
         if (tmp_ret == RET_ERR || token_len >= TOKEN_NAME_LEN_MAX) {
-            LOG_ERR("conf line format err! [%s]", tmp_buf);
+            SDNS_LOG_ERR("conf line format err! [%s]", tmp_buf);
             return RET_ERR;
         }
 
@@ -81,7 +81,7 @@ int cfg_parse(GLB_VARS *glb_vars)
         snprintf(key, token_len + 1, "%s", token_p);
         handler = get_token_handler(key);
         if (!handler) {
-            LOG_ERR("no key! [%s]", key);
+            SDNS_LOG_ERR("no key! [%s]", key);
             return RET_ERR;
         }
         /* 对于RET_DQUOTE的key, 调整val的搜索点 */
@@ -352,7 +352,8 @@ int get_a_token(char *buf, char **token, int *token_len)
             }
 
             if (format_err) {       /* 不支持 '和\ */
-                LOG_ERR("format err, %s[offset: %ld]!", buf, (&ch - buf));
+                SDNS_LOG_ERR("format err, %s[offset: %ld]!", 
+                        buf, (&ch - buf));
                 return RET_ERR;
             }
 

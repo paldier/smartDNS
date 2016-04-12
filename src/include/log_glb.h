@@ -1,23 +1,43 @@
 #ifndef LOG_GLB_H
 #define LOG_GLB_H
 
+#include <syslog.h>
 #include "util_glb.h"
 
 /**
+ * 日志初始化
+ * @param: void
+ * @retval: RET_ERR/OK
+ */
+int log_init();
+
+/**
  * 日志输出标准函数
- * @param err_num: [in], 错误码, errno或0(自定义错误)
- * @param fd: [in], 日志输出文件描述符
+ * @param file: [in], 输出日志时代码所在的文件
+ * @param func: [in], 输出日志时代码所在的函数
+ * @param line: [in], 输出日志时代码所在的行
+ * @param level: [in], 日志级别
  * @param fmt: [in], 格式字符串, 同printf
  * @retval: void
  */
-void log_base(const char *file, const char *func, int line, int fd, 
-        const char *fmt, ...) __attribute__((format (printf, 5, 6)));
+void log_base(const char *file, const char *func, int line, 
+        int level, const char *fmt, ...) 
+    __attribute__((format (printf, 5, 6)));
 
 /**
- * 输出到标准错误输出
+ * 日志输出宏
  */
-#define LOG_ERR(fmt, ...) do{\
-    log_base(__FILE__, __func__, __LINE__, STDERR_FILENO, fmt, ##__VA_ARGS__);\
+#define SDNS_LOG_ERR(fmt, ...) do{\
+    log_base(__FILE__, __func__, __LINE__, LOG_ERR,\
+            fmt, ##__VA_ARGS__);\
+}while(0);
+#define SDNS_LOG_DEBUG(fmt, ...) do{\
+    log_base(__FILE__, __func__, __LINE__, LOG_DEBUG,\
+            fmt, ##__VA_ARGS__);\
+}while(0);
+#define SDNS_LOG_WARN(fmt, ...) do{\
+    log_base(__FILE__, __func__, __LINE__, LOG_WARNING,\
+            fmt, ##__VA_ARGS__);\
 }while(0);
 
 #endif

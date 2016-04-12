@@ -61,7 +61,7 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
     char *p_c;
 
     if (init_options_type() == RET_ERR) {
-        LOG_ERR("init option type failed");
+        SDNS_LOG_ERR("init option type failed");
         return RET_ERR;
     }
 
@@ -71,7 +71,7 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
 
         /* format check, must start by '-' */
         if (*p_c++ != '-') {
-            LOG_ERR("invalid option: \"%s\"", argv[i]);
+            SDNS_LOG_ERR("invalid option: \"%s\"", argv[i]);
             return RET_ERR;
         }
 
@@ -80,7 +80,7 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
         if (s_options[opt_id].req_val == NEED_VAL) {
             if ((i+1) >= argc
                     || check_option_val(argv[i+1]) == RET_ERR) {
-                LOG_ERR("invalid option val: \"%s\"", argv[i]);
+                SDNS_LOG_ERR("invalid option val: \"%s\"", argv[i]);
                 return RET_ERR;
             }
             i++;
@@ -112,11 +112,11 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
                     break;
                 }
 
-                LOG_ERR("invalid option: \"-s %s\"", glb_vars->signal);
+                SDNS_LOG_ERR("invalid option: \"-s %s\"", glb_vars->signal);
                 return RET_ERR;
 
             default:
-                LOG_ERR("invalid option: \"%c\"", *(p_c - 1));
+                SDNS_LOG_ERR("invalid option: \"%c\"", *(p_c - 1));
                 return RET_ERR;
         }
     }
@@ -126,13 +126,13 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
 
 void usage_help()
 {
-    LOG_ERR("\nUsage: smartDNS [-?ht] [-s signal] [-f filename]");
-    LOG_ERR("\nOptions:");
-    LOG_ERR("\t-?,-h         : show help");
-    LOG_ERR("\t-t            : test configuration and exit");
-    LOG_ERR("\t-s signal     : send signal to a master process, ");
-    LOG_ERR("\t                     <stop, quit, reopen, reload>");
-    LOG_ERR("\t-f filename   : set configuration file");
+    printf("\nUsage: smartDNS [-?ht] [-s signal] [-f filename]\n");
+    printf("\nOptions:\n");
+    printf("\t-?,-h         : show help\n");
+    printf("\t-t            : test configuration and exit\n");
+    printf("\t-s signal     : send signal to a master process, \n");
+    printf("\t                     <stop, quit, reopen, reload>\n");
+    printf("\t-f filename   : set configuration file\n");
 }
 
 

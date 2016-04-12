@@ -1,11 +1,41 @@
-#include <stdio.h>      /* for vsnprintf() */
+#include <stdio.h>      /* for vsnprintf(), fopen() */
 #include <stdarg.h>     /* for va_list */
 #include <unistd.h>     /* for write() */
 #include <string.h>     /* for strlen() */
 #include "log.h"
 
+/* 自定义日志文件描述符 */
+static FILE *s_log_fd;
 
-void log_base(const char *file, const char *func, int line, int fd, 
+/* 日志级别 */
+static struct st_log_level {
+    char name[32];
+} s_log_level[] = {
+    {"LOG_EMERG"},
+    {"LOG_ALERT"},
+    {"LOG_CRIT"},
+    {"LOG_ERR"},
+    {"LOG_WARNING"},
+    {"LOG_NOTICE"},
+    {"LOG_INFO"},
+    {"LOG_DEBUG"},
+    {""}
+};
+
+int log_init()
+{
+#ifdef DNS_DEBUG
+    openlog("smartDNS", LOG_NDELAY|LOG_CONS|LOG_PID|LOG_PERROR, LOG_LOCAL5);
+#else
+    openlog("smartDNS", LOG_NDELAY, LOG_LOCAL5);
+#endif
+    
+    SDNS_LOG_DEBUG("log init OK!");
+
+    return RET_OK;
+}
+
+void log_base(const char *file, const char *func, int line, int level, 
         const char *fmt, ...)
 {
     char tmp_str[MAX_LOG_STR_LEN] = {0};
@@ -15,11 +45,16 @@ void log_base(const char *file, const char *func, int line, int fd,
     vsnprintf(tmp_str, MAX_LOG_STR_LEN - 1, fmt, args);
     va_end(args);
 
-    if (fd) {
-        write(fd, (const void *)tmp_str, strlen(tmp_str));
-        write(fd, "\n", strlen("\n"));
+    if (s_log_fd) {
+        fprintf(s_log_fd, "<%s><%s|%s|%d>: %s\n", s_log_level[level].name,
+                file, func, line, tmp_str);
     } else {
-        //syslog();
+        if (level < LOG_WARNING) {
+            syslog(level, "<%s><%s|%s|%d>: %s", s_log_level[level].name,
+                    file, func, line, tmp_str);
+        } else {
+            syslog(level, "%s", tmp_str);
+        }
     }
 }
 
