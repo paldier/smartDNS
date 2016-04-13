@@ -43,12 +43,12 @@ int main(int argc, char **argv)
         return 1;
     }
 
-#if 0
     /* 解析域信息文件*.zone */
     if (zone_parse(&g_glb_vars) == RET_ERR) {
         return 1;
     }
 
+#if 0
     /* 报文收发引擎初始化 */
     pkt_engine_init();
 

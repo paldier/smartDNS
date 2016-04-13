@@ -1,19 +1,28 @@
+; 此配置文件应该和master.conf放置在同一目录下
+; 支持的配置随着程序的丰富陆续加入(意味着: 当前的配置为程序所支持的)
+; (和)用于组合多行到同一配置
+;
+; ';'用于行注释
+; '*'用于wildcarding匹配
+; '@'声明当前默认域名(current default domain name)
+; 除SOA外, 其他配置不支持多行
+
 $TTL	86400 ; 24 hours could have been written as 24h or 1d
 $ORIGIN example.com.
-@  1D  IN	 SOA ns1.example.com.	hostmaster.example.com. (
-			      2002022401 ; serial
-			      3H ; refresh
-			      15 ; retry
-			      1w ; expire
-			      3h ; minimum
-			     )
-       IN  NS     ns1.example.com. ; in the domain
-       IN  NS     ns2.smokeyjoe.com. ; external to domain
-       IN  MX  10 mail.another.com. ; external mail provider
+;@  1D  IN	 SOA ns1.example.com.	hostmaster.example.com. (
+;			      2002022401 ; serial
+;			      3H ; refresh
+;			      15 ; retry
+;			      1w ; expire
+;			      3h ; minimum
+;			     )
+;       IN  NS     ns1.example.com. ; in the domain
+;       IN  NS     ns2.smokeyjoe.com. ; external to domain
+;       IN  MX  10 mail.another.com. ; external mail provider
 ; server host definitions
 ns1    IN  A      192.168.0.1  ;name server definition     
 www    IN  A      192.168.0.2  ;web server definition
-ftp    IN  CNAME  www.example.com.  ;ftp server definition
+;ftp    IN  CNAME  www.example.com.  ;ftp server definition
 ; non server domain hosts
 bill   IN  A      192.168.0.3
 fred   IN  A      192.168.0.4 

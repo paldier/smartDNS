@@ -31,7 +31,7 @@ typedef struct st_glb_variables{
     char conf_file[CONF_FILE_LEN];  /* 配置文件, -f指定 */
     char signal[SIGNAL_STR_LEN];    /* 处理信号, -s指定 */
     void *conf;                     /* .conf配置信息, CFG_INFO */
-    void **zone;                    /* .zone域信息, ZONE */
+    void *zones;                    /* .zone域信息, ZONES */
     void *sh_mem;                   /* 共享内存 */
 }GLB_VARS;
 

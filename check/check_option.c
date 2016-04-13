@@ -318,13 +318,13 @@ START_TEST (test_get_options_RET_ERR)
 }
 END_TEST
 
-Suite * get_options_suite(void)                                               
+Suite * option_suite(void)                                               
 {                                                                       
     Suite *s;
     TCase *tc_core;
 
     /* create suite */
-    s = suite_create("get_options");
+    s = suite_create("master/option.c");
 
     /* create test */
     tc_core = tcase_create("init_options_type");
@@ -343,7 +343,7 @@ Suite * get_options_suite(void)
     tcase_add_test(tc_core, test_check_option_val);
     suite_add_tcase(s, tc_core);
 
-    tc_core = tcase_create("test_get_options");
+    tc_core = tcase_create("get_options");
     tcase_add_test(tc_core, test_get_options_RET_OK);
     tcase_add_test(tc_core, test_get_options_RET_ERR);
     suite_add_tcase(s, tc_core);
@@ -351,7 +351,7 @@ Suite * get_options_suite(void)
     return s;
 }
 
-REGISTER_SUITE(get_options_suite);
+REGISTER_SUITE(option_suite);
 
 
 
