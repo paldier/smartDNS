@@ -13,6 +13,9 @@ void release_resource(GLB_VARS *glb_vars)
     /* 释放.conf配置信息 */
     release_conf(glb_vars);
 
+    /* 释放.zone配置信息 */
+    release_zone(glb_vars);
+
     /* 释放其他资源 */
 }
 

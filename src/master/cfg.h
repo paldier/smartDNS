@@ -6,8 +6,7 @@
  */
 typedef struct st_zone_info {
     char name[TOKEN_NAME_LEN_MAX];  /* 域名 */
-    char file[TOKEN_NAME_LEN_MAX];  /* 域配置文件 */
-    void *zone;                     /* 对应ZONE结构, 维护record */
+    char file[TOKEN_NAME_LEN_MAX];  /* 域配置文件.zone */
 
     unsigned int dev_type:1;        /* 地位: master or slave */
 }ZONE_CFG_INFO;
@@ -34,23 +33,23 @@ void print_cfg_parse_res(GLB_VARS *glb_vars);
 
 /**
  * 创建域管理信息数据结构
- * @param val: [in], zone对应的配置信息
+ * @param val: [in], zone对应的配置信息, GLB_VARS *
  * @retval: RET_OK/RET_ERR
  */
-int create_zone_cfg(GLB_VARS *glb_vars, char *val);
+int create_zone_cfg(void *glb_vars, char *val);
 
 /**
  * 设置当前设备的身份, 主/辅
- * @param val: [in], type对应的配置信息, [master|slave]
+ * @param val: [in], type对应的配置信息, [master|slave], GLB_VARS *
  * @retval: RET_OK/RET_ERR
  */
-int set_dev_type(GLB_VARS *glb_vars, char *val);
+int set_dev_type(void *glb_vars, char *val);
 
 /**
  * 记录域信息文件名
- * @param val: [in], file对应的域信息文件名, xxx.zone
+ * @param val: [in], file对应的域信息文件名, xxx.zone, GLB_VARS *
  * @retval: RET_OK/RET_ERR
  */
-int save_zone_info_file(GLB_VARS *glb_vars, char *val);
+int save_zone_info_file(void *glb_vars, char *val);
 
 #endif

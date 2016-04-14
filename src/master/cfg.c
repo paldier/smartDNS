@@ -44,12 +44,13 @@ ZONE_CFG_INFO *get_zone_cfg_slow(GLB_VARS *glb_vars, char *zone_name)
     return zone_cfg;
 }
 
-int create_zone_cfg(GLB_VARS *glb_vars, char *val)
+int create_zone_cfg(void *glb_vars, char *val)
 {
     /*val format in " \"example.com\" {"*/
     char zone_name[TOKEN_NAME_LEN_MAX] = {0};
     char *token_p;
     int token_len;
+    GLB_VARS *glb_vars_p = (GLB_VARS *)glb_vars;
     CFG_INFO *cfg_info;
     ZONE_CFG_INFO *zone_cfg;
     void *realloc_mem;
@@ -66,7 +67,7 @@ int create_zone_cfg(GLB_VARS *glb_vars, char *val)
     snprintf(zone_name, token_len + 1, "%s", token_p);
 
     /* 提取配置信息结构 */
-    cfg_info = (CFG_INFO *)glb_vars->conf;
+    cfg_info = (CFG_INFO *)glb_vars_p->conf;
     if (cfg_info == NULL) {
         cfg_info = (CFG_INFO *)SDNS_MALLOC(sizeof(CFG_INFO));
         if (cfg_info == NULL) {
@@ -75,11 +76,11 @@ int create_zone_cfg(GLB_VARS *glb_vars, char *val)
         }
         SDNS_MEMSET(cfg_info, 0, sizeof(CFG_INFO));
 
-        glb_vars->conf = cfg_info;
+        glb_vars_p->conf = cfg_info;
     }
 
     /* 是否已存在? */
-    zone_cfg = get_zone_cfg_slow(glb_vars, zone_name);
+    zone_cfg = get_zone_cfg_slow(glb_vars_p, zone_name);
     if (zone_cfg) {
         s_zone_cfg = zone_cfg;
         SDNS_LOG_WARN("duplicate zone, %s", zone_name);
@@ -120,7 +121,7 @@ int create_zone_cfg(GLB_VARS *glb_vars, char *val)
     return RET_OK;
 }
 
-int set_dev_type(GLB_VARS *glb_vars, char *val)
+int set_dev_type(void *glb_vars, char *val)
 {
     /*val format in " master;"*/
     char *token_p;
@@ -144,7 +145,7 @@ int set_dev_type(GLB_VARS *glb_vars, char *val)
     return RET_OK;
 }
 
-int save_zone_info_file(GLB_VARS *glb_vars, char *val)
+int save_zone_info_file(void *glb_vars, char *val)
 {
     /*val format in " \"example.zone\";"*/
     char *token_p;
@@ -243,6 +244,32 @@ int cfg_parse(GLB_VARS *glb_vars)
     return RET_OK;
 }
 
+int zone_parse(GLB_VARS *glb_vars)
+{
+    CFG_INFO *cfg_info;
+    ZONE_CFG_INFO *zone_cfg;
+    int tmp_ret;
+
+    cfg_info = (CFG_INFO *)glb_vars->conf;
+    if (cfg_info == NULL) {
+        SDNS_LOG_WARN("NO zone, it's OK?");
+        return RET_OK;
+    }
+
+    for (int i=0; i<cfg_info->zone_cfg_num; i++) {
+        zone_cfg = cfg_info->zone_cfg[i];
+
+        tmp_ret = parse_zone_file(glb_vars, zone_cfg->name, zone_cfg->file);
+        if (tmp_ret == RET_ERR) {
+            SDNS_LOG_ERR("parse zone(%s) file(%s) failed",
+                    zone_cfg->name, zone_cfg->file);
+            return RET_ERR;
+        }
+    }
+
+    return RET_OK;
+}
+
 void release_conf(GLB_VARS *glb_vars)
 {
     CFG_INFO *cfg_info;
@@ -288,7 +315,5 @@ void print_cfg_parse_res(GLB_VARS *glb_vars)
         printf("\tfile \"%s\";\n", zone_cfg->file);
         printf("};\n");
     }
-
-    /* 其他信息 */
 }
 

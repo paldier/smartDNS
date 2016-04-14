@@ -48,20 +48,30 @@
  *      典型值86400
  */
 
+#include <stdint.h>             /* for uint32_t */
+
 #define LABEL_LEN_MAX   63      /* 域名中单个label长度最大值 */
 #define DOMAIN_LEN_MAX  255     /* 域名最大长度 */
+
+enum {
+    TYPE_A = 1,
+};
+
+enum {
+    CLASS_IN = 1,
+};
 
 /**
  * 对应记录, 目前支持
  *  1) A记录
  */
 typedef struct st_rr {
-    char name[LABEL_LEN_MAX];   /* 子域名 */
+    char name[LABEL_LEN_MAX+1]; /* 子域名, magic 1: 结尾\0 */
     int type;                   /* */
     int rr_class;               /* */
     int ttl;                    /* 此RR在resolver可缓存的时间 */
     union{
-        char ip4[4];
+        uint32_t ip4;
     }rdata[1];                  /* TODO: 暂时支持单条记录 */
 }RR;
 
@@ -69,11 +79,16 @@ typedef struct st_rr {
  * 域对应的记录信息, 对应.zone文件
  */
 typedef struct st_zone {
-    void *zone_cfg;         /* 回指ZONE_CFG_INFO */
-    unsigned int ttl;       /* 默认TTL */
+    char name[DOMAIN_LEN_MAX];
+                            /* 权威域名, 以.结尾 */
+    char origin_name[DOMAIN_LEN_MAX];
+                            /* 对应$ORIGIN, 以.结尾 */
+    int ttl;                /* 对应$TTL, 默认TTL */
     
     /* TODO:暂时用数组实现, 后续利用AC树优化 */
-    RR *rrs;                /* 对应记录 */
+    RR **rrs;               /* 对应记录 */
+    int rrs_cnt;
+    int rrs_total;
 }ZONE;
 typedef struct st_zones {
     /* TODO:暂时用数组实现, 后续利用HASH表优化
@@ -83,5 +98,88 @@ typedef struct st_zones {
     int zone_total;
 }ZONES;
 
+/**
+ * 获取域信息结构
+ * @param glb_vars: [in], 全局变量集合结构
+ * @param au_domain: [in], 权威域名
+ * @retval: NULL/ZONE结构指针
+ */
+ZONE *get_zone(GLB_VARS *glb_vars, const char *au_domain);
+
+/**
+ * 分配ZONE配置结构体
+ * @param glb_vars: [in][out], 全局变量集合结构
+ * @param zone_name: [in], 权威域名
+ * @retval: NULL/ZONE结构指针
+ */
+ZONE *create_a_zone(GLB_VARS *glb_vars, char *zone_name);
+
+/**
+ * 获取RR记录
+ * @param zone: [in], 权威域配置信息
+ * @param sub_domain: [in], 待查找的子域名
+ * @retval: NULL/RR结构指针
+ */
+RR *get_zone_rr_byname(ZONE *zone, const char *sub_domain);
+
+/**
+ * 处理$TTL关键字
+ * @param zone: [in], 权威域配置信息, ZONE *
+ * @param val: [in], 对应$TTL关键字的值
+ * @retval: RET_OK/RET_ERR
+ */
+int set_glb_default_ttl(void *zone, char *val);
+
+/**
+ * 处理$ORIGIN关键字
+ * @param zone: [in], 权威域配置信息, ZONE *
+ * @param val: [in], 对应$ORIGIN关键字的值
+ * @retval: RET_OK/RET_ERR
+ */
+int set_glb_au_domain_suffix(void *zone, char *val);
+
+/**
+ * 设置RR记录的NAME/TTL/RDATA/TYPE/CLASS
+ * @param rr: [in][out], rr记录指针, RR*
+ * @param val: [in], name值
+ * @retval: RET_OK/RET_ERR
+ *
+ * @note
+ *  1) 由调用函数做参数检测
+ */
+int set_rr_name(void *rr, char *val);
+int set_rr_ttl(void *rr, char *val);
+int set_rr_rdata(void *rr, char *val);
+int set_rr_type_A(void *rr, char *val);
+int set_rr_class_IN(void *rr, char *val);
+
+/**
+ * 分配RR配置结构体
+ * @param zone: [in][out], 域结构
+ * @retval: NULL/RR结构指针
+ */
+RR *create_a_rr(ZONE *zone);
+
+/**
+ * 判断输入字符串是否为[0-9]组成
+ * @param val: 待验证字符串
+ * @retval: 0/1
+ */
+int is_digit(char *val);
+
+/**
+ * 处理RR记录
+ * @param rr: [in], RR记录, RR *
+ * @param val: [in], 对应RR记录
+ * @retval: RET_OK/RET_ERR
+ */
+int parse_rr(void *rr, char *val);
+
+/**
+ * 调试, 打印.zone配置文件解析结果
+ * @param zone: [in], 域配置结构
+ * @retval: void
+ */
+void print_zone_parse_res(ZONE *zone);
 
 #endif

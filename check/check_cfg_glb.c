@@ -6,12 +6,17 @@
 START_TEST (test_get_token_handler)
 {
     /* 仅仅为了测试, 使用GCC的拓展, 内部定义 */
-    int test_func_p(GLB_VARS *glb_vars, char *val)
+    int test_func_p(void *glb_vars, char *val)
+    {
+        return RET_ERR;
+    }
+    int an_test_func_p(void *glb_vars, char *val)
     {
         return RET_ERR;
     }
     CFG_TYPE tmp_test_arr[] = {
         {"test", test_func_p},
+        {"*", an_test_func_p},
         {"", (token_handler)NULL},
     };
     token_handler tmp_hdler;
@@ -21,18 +26,14 @@ START_TEST (test_get_token_handler)
     tmp_hdler = get_token_handler(tmp_test_arr, "test");
     ck_assert_int_eq((tmp_hdler - test_func_p), 0);
 
-    /* NOT right thing */
     tmp_hdler = get_token_handler(tmp_test_arr, "other");
-    ck_assert_int_eq(tmp_hdler, 0);
+    ck_assert_int_eq((tmp_hdler - an_test_func_p), 0);
 
+    /* NOT right thing */
     tmp_hdler = get_token_handler(tmp_test_arr, "");
     ck_assert_int_eq(tmp_hdler, 0);
 
     tmp_hdler = get_token_handler(tmp_test_arr, NULL);
-    ck_assert_int_eq(tmp_hdler, 0);
-
-    tmp_hdler = get_token_handler(tmp_test_arr, 
-            "fffffffffffffffffffffffffffffffff");
     ck_assert_int_eq(tmp_hdler, 0);
 }
 END_TEST
@@ -41,6 +42,8 @@ START_TEST (test_get_a_token)
 {
     /* snprintf()按照指定长度形成字符串, 并自动在结尾处插入'\0'字符,
      * <NOTE>指定的长度包括最后'\0' */
+    /* 由token长度和LINE长度界定的边界不需要在此测试, 由代码中调用
+     * 此函数的逻辑保证 */
     char tmp_line[LINE_LEN_MAX] = {0};
     char *tmp_token;
     int tmp_len;
@@ -96,6 +99,28 @@ START_TEST (test_get_a_token)
     snprintf(tmp_line, LINE_LEN_MAX, "\t}; ");
     tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
     ck_assert_int_eq(tmp_len, strlen("}"));
+    ck_assert_int_eq((tmp_token - tmp_line - strlen("\t")), 0); 
+    ck_assert_int_eq(tmp_ret, RET_BRACE);
+    tmp_ret = get_a_token(tmp_token + tmp_len, &tmp_token, &tmp_len);
+    ck_assert_int_eq(tmp_len, 0);
+    ck_assert_int_eq(tmp_token , 0); 
+    ck_assert_int_eq(tmp_ret, RET_COMMENT);
+
+    /* keyword + ( */
+    snprintf(tmp_line, LINE_LEN_MAX, "hello (");
+    tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
+    ck_assert_int_eq(tmp_len, strlen("hello"));
+    ck_assert_int_eq((tmp_token - tmp_line), 0);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    tmp_ret = get_a_token(tmp_token + tmp_len, &tmp_token, &tmp_len);
+    ck_assert_int_eq(tmp_len, strlen("("));
+    ck_assert_int_eq((tmp_token - tmp_line - strlen("hello ")), 0);
+    ck_assert_int_eq(tmp_ret, RET_BRACE);
+
+    /* \t + } + ; + 空格 */
+    snprintf(tmp_line, LINE_LEN_MAX, "\t); ");
+    tmp_ret = get_a_token(tmp_line, &tmp_token, &tmp_len);
+    ck_assert_int_eq(tmp_len, strlen(")"));
     ck_assert_int_eq((tmp_token - tmp_line - strlen("\t")), 0); 
     ck_assert_int_eq(tmp_ret, RET_BRACE);
     tmp_ret = get_a_token(tmp_token + tmp_len, &tmp_token, &tmp_len);

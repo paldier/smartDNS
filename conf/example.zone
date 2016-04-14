@@ -2,10 +2,11 @@
 ; 支持的配置随着程序的丰富陆续加入(意味着: 当前的配置为程序所支持的)
 ; (和)用于组合多行到同一配置
 ;
-; ';'用于行注释
+; ';'用于行注释, 不知道多行注释
 ; '*'用于wildcarding匹配
 ; '@'声明当前默认域名(current default domain name)
 ; 除SOA外, 其他配置不支持多行
+; 不支持'和"
 
 $TTL	86400 ; 24 hours could have been written as 24h or 1d
 $ORIGIN example.com.
@@ -26,4 +27,5 @@ www    IN  A      192.168.0.2  ;web server definition
 ; non server domain hosts
 bill   IN  A      192.168.0.3
 fred   IN  A      192.168.0.4 
-foo A 1.2.3.4
+       IN  A      192.168.0.5 
+foo        A      1.2.3.4

@@ -16,7 +16,9 @@ token_handler get_token_handler(CFG_TYPE *tk_arr, char *token)
             break;
         }
 
-        if (!strcmp(tk_arr[i].name, token)) {
+        /* <NOTE!!!>如果有模糊匹配*, 必须放置在最后 */
+        if (!strcmp(tk_arr[i].name, token)
+                || (!strcmp(tk_arr[i].name, "*") && strlen(token))) {
             return tk_arr[i].dispose;
         }
 
@@ -116,6 +118,8 @@ int get_a_token(char *buf, char **token, int *token_len)
                 break;
             case '{':
             case '}':
+            case '(':
+            case ')':
                 brace = true;
                 break;
             default:
