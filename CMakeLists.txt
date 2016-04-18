@@ -7,6 +7,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 #项目信息
 project(smartDNS)
 
+#设置底层报文引擎类型
+SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS ON)
+SET(ENGINE_TYPE "DEFAULT")
+
 #添加编译选项
 ADD_DEFINITIONS(-Wall)
 ADD_DEFINITIONS(-Werror)
@@ -26,8 +30,8 @@ add_subdirectory(src)
 
 #编译单元测试
 find_package(Check)
-if(CHECK_FOUND)                                                                    
+if(CHECK_FOUND)
     add_subdirectory(check)
-    enable_testing()                                                                 
+    enable_testing()
 endif()
 

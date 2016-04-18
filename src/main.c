@@ -4,6 +4,7 @@
 #include <string.h>         /* for memset() */
 #include "util_glb.h"
 #include "cfg_glb.h"
+#include "engine_glb.h"
 #include "log_glb.h"
 
 GLB_VARS g_glb_vars;
@@ -51,15 +52,19 @@ int main(int argc, char **argv)
         return 1;
     }
 
-#if 0
     /* 报文收发引擎初始化 */
-    pkt_engine_init();
+    if (pkt_engine_init() == RET_ERR) {
+        return 1;
+    }
 
+#if 0
     /* 启动工作进程 */
     start_worker();
 
     /* 启动收发报文引擎 */
-    start_pkt_engine();
+    if (start_pkt_engine() == RET_ERR) {
+        return 1;
+    }
 
     /* 主循环, 处理信号 */
     set_signal_handlers();
