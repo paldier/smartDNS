@@ -5,7 +5,23 @@
 #include "log_glb.h"
 #include "option.h"
 
-struct st_option s_options[OPTION_ID_MAX];
+/**
+ * 支持的命令行参数
+ *  name:       名称
+ *  req_val:    是否需要配置值
+ *
+ *  magic 128: ASCII字符个数, 因为只支持单字符命令行参数
+ *  magic 4: 对于单字符足以, 这里考虑对齐取4
+ */
+static struct st_option {
+#define OPTION_ID_MAX       128
+#define OPTION_LEN_MAX      4
+    char name[OPTION_LEN_MAX];
+#define NO_VAL              0
+#define NEED_VAL            1
+    int req_val;
+}s_options[128]; 
+
 
 
 int init_options_type()
@@ -15,11 +31,11 @@ int init_options_type()
         s_options[i].req_val = NO_VAL;
     }
 
-    snprintf(s_options['?'].name, OPTION_STR_LEN_MAX-1, "%s", "?");
-    snprintf(s_options['h'].name, OPTION_STR_LEN_MAX-1, "%s", "h");
-    snprintf(s_options['t'].name, OPTION_STR_LEN_MAX-1, "%s", "t");
-    snprintf(s_options['f'].name, OPTION_STR_LEN_MAX-1, "%s", "f");
-    snprintf(s_options['s'].name, OPTION_STR_LEN_MAX-1, "%s", "s");
+    snprintf(s_options['?'].name, OPTION_LEN_MAX, "%s", "?");
+    snprintf(s_options['h'].name, OPTION_LEN_MAX, "%s", "h");
+    snprintf(s_options['t'].name, OPTION_LEN_MAX, "%s", "t");
+    snprintf(s_options['f'].name, OPTION_LEN_MAX, "%s", "f");
+    snprintf(s_options['s'].name, OPTION_LEN_MAX, "%s", "s");
     s_options['f'].req_val = NEED_VAL;
     s_options['s'].req_val = NEED_VAL;
 
@@ -30,13 +46,16 @@ int get_option_type(const char *type)
 {
     int tmp_id;
 
+    /* magic 1: 仅支持单字符 */
     if (type == NULL
             || strlen(type) != 1) {
         return 0;
     }
 
+    /* 单字符, 0~128之间, 且已经初始化 */
     tmp_id = type[0];
-    if (tmp_id > OPTION_ID_MAX
+    if (tmp_id < 0
+            || tmp_id > OPTION_ID_MAX
             || strlen(s_options[tmp_id].name) == 0) {
         return 0;
     }
@@ -46,7 +65,8 @@ int get_option_type(const char *type)
 
 int check_option_val(const char *val)
 {
-    if (val == NULL
+    if (val == NULL 
+            || strlen(val) == 0
             || val[0] == '-') {
         return RET_ERR;
     }
@@ -57,9 +77,10 @@ int check_option_val(const char *val)
 int get_options(int argc, char **argv, GLB_VARS *glb_vars)
 {
     int opt_id;         /* 参数在s_options[]中的索引 */
-    char *opt_val;
-    char *p_c;
+    char *opt_val;      /* 参数配置值 */
+    char *p_c;          /* 当前字符 */
 
+    /* 初始化支持的命令行参数 */
     if (init_options_type() == RET_ERR) {
         SDNS_LOG_ERR("init option type failed");
         return RET_ERR;
@@ -70,10 +91,13 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
         p_c = argv[i];
 
         /* format check, must start by '-' */
-        if (*p_c++ != '-') {
+        if (p_c[0] != '-' 
+                || p_c[1] == '0'
+                || p_c[1] == '\n'){
             SDNS_LOG_ERR("invalid option: \"%s\"", argv[i]);
             return RET_ERR;
         }
+        p_c++;
 
         /* get index of s_options[] and val*/
         opt_id = get_option_type(p_c);
@@ -101,7 +125,7 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
             case 'f':       /* 指定配置文件 */
                 snprintf(glb_vars->conf_file, CONF_FILE_LEN, "%s", opt_val);
                 break;
-            case 's':
+            case 's':       /* 指定待处理信号 */
                 snprintf(glb_vars->signal, SIGNAL_STR_LEN, "%s", opt_val);
                 glb_vars->process_role |= PROCESS_ROLE_SIGNALLER;
 

@@ -2,25 +2,13 @@
 #define OPTION_H
 
 /**
- * 支持的命令行参数
- *  name:       名称(仅支持单字符)
- *  req_val:    是否需要值
- */
-struct st_option {
-#define OPTION_STR_LEN_MAX      32
-    char name[OPTION_STR_LEN_MAX];
-#define NO_VAL              0
-#define NEED_VAL            1
-    int req_val;
-}; 
-
-/**
- * 支持的命令行参数及参数需求信息
+ * 为了简单, 命令行参数仅支持ASCII单字符, 因此可利用数组
+ * 索引命令行参数; 命令行参数的配置值可选.
  *
- * magic 128: 仅支持ASCII, 因此数组大小为ASCII字符个数
- */ 
-#define OPTION_ID_MAX   128
-extern struct st_option s_options[OPTION_ID_MAX];
+ * 命令行参数格式:
+ *      -f xxx.conf
+ *      -h
+ */
 
 /**
  * 初始化支持的命令行参数

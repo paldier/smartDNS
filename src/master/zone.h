@@ -2,6 +2,14 @@
 #define ZONE_H
 
 /**
+ * xxx.zone约定:
+ *  1) 以";"标识注释
+ *  2) 换行标识单条记录
+ *  3) SOA配置用()包括
+ *  4) 其余遵照Bind配置文件
+ */
+
+/**
  * 参考RFC 1033
  *
  * A记录格式
@@ -86,9 +94,9 @@ typedef struct st_zone {
     int ttl;                /* 对应$TTL, 默认TTL */
     
     /* TODO:暂时用数组实现, 后续利用AC树优化 */
-    RR **rrs;               /* 对应记录 */
-    int rrs_cnt;
-    int rrs_total;
+    RR **rr;               /* 对应记录 */
+    int rr_cnt;
+    int rr_total;
 }ZONE;
 typedef struct st_zones {
     /* TODO:暂时用数组实现, 后续利用HASH表优化
@@ -104,7 +112,7 @@ typedef struct st_zones {
  * @param au_domain: [in], 权威域名
  * @retval: NULL/ZONE结构指针
  */
-ZONE *get_zone(GLB_VARS *glb_vars, const char *au_domain);
+ZONE *get_zone(GLB_VARS *glb_vars, char *au_domain);
 
 /**
  * 分配ZONE配置结构体
@@ -112,7 +120,7 @@ ZONE *get_zone(GLB_VARS *glb_vars, const char *au_domain);
  * @param zone_name: [in], 权威域名
  * @retval: NULL/ZONE结构指针
  */
-ZONE *create_a_zone(GLB_VARS *glb_vars, char *zone_name);
+ZONE *create_zone(GLB_VARS *glb_vars, char *zone_name);
 
 /**
  * 获取RR记录
@@ -120,7 +128,7 @@ ZONE *create_a_zone(GLB_VARS *glb_vars, char *zone_name);
  * @param sub_domain: [in], 待查找的子域名
  * @retval: NULL/RR结构指针
  */
-RR *get_zone_rr_byname(ZONE *zone, const char *sub_domain);
+RR *get_rr(ZONE *zone, const char *sub_domain);
 
 /**
  * 处理$TTL关键字
@@ -156,9 +164,10 @@ int set_rr_class_IN(void *rr, char *val);
 /**
  * 分配RR配置结构体
  * @param zone: [in][out], 域结构
+ * @param sub_domain: [in], 待创建的子域名
  * @retval: NULL/RR结构指针
  */
-RR *create_a_rr(ZONE *zone);
+RR *create_rr(ZONE *zone, char *sub_domain);
 
 /**
  * 判断输入字符串是否为[0-9]组成

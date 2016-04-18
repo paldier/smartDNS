@@ -2,7 +2,11 @@
 #include <stdarg.h>     /* for va_list */
 #include <unistd.h>     /* for write() */
 #include <string.h>     /* for strlen() */
+#include "log_glb.h"
 #include "log.h"
+
+/* 单条日志的最大长度 */
+#define MAX_LOG_STR_LEN     1024
 
 /* 自定义日志文件描述符 */
 static FILE *s_log_fd;
@@ -49,7 +53,7 @@ void log_base(const char *file, const char *func, int line, int level,
         fprintf(s_log_fd, "<%s><%s|%s|%d>: %s\n", s_log_level[level].name,
                 file, func, line, tmp_str);
     } else {
-        if (level < LOG_WARNING) {
+        if (level < LOG_NOTICE) {
             syslog(level, "<%s><%s|%s|%d>: %s", s_log_level[level].name,
                     file, func, line, tmp_str);
         } else {

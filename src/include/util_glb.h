@@ -23,6 +23,11 @@ enum{
  * 聚集分散的全局变量 
  * <NOTE>
  *  1) 使用void *是为了避免过多的头文件引用
+ *  2) conf和zones分别代表master.conf和xxx.zone文件的解析结果
+ *      conf包含了域的控制信息, 如ACL/域信息文件等
+ *      zones则包含了具体的域记录, 如RR/SOA等
+ *  3) 域名请求时, 搜索conf/zones得到对应的RR记录, 并将结果写
+ *      入高速缓存; 后续直接走高速缓存
  */
 typedef struct st_glb_variables{
 #define CONF_FILE_LEN   32
@@ -32,6 +37,7 @@ typedef struct st_glb_variables{
     char signal[SIGNAL_STR_LEN];    /* 处理信号, -s指定 */
     void *conf;                     /* .conf配置信息, CFG_INFO */
     void *zones;                    /* .zone域信息, ZONES */
+    void *cache;                    /* 用于应答域名请求的高速缓存 */
     void *sh_mem;                   /* 共享内存 */
 }GLB_VARS;
 
@@ -40,5 +46,6 @@ typedef struct st_glb_variables{
 #define SDNS_MEMSET     memset
 #define SDNS_REALLOC    realloc 
 #define SDNS_FREE       free
+#define SDNS_MEMCPY     memcpy
 
 #endif

@@ -15,115 +15,54 @@ static void setup(void)
 
 static void teardown(void)
 {
-    for (int i=0; i<OPTION_ID_MAX; i++) {
-        (void)memset(s_options[i].name, 0, OPTION_STR_LEN_MAX);
-        s_options[i].req_val = NO_VAL;
-    }
+    ;                           /* do nothing */
 }
-
-START_TEST (test_init_options_type)
-{
-    int tmp_ret;
-
-    /* test call */
-    tmp_ret = init_options_type();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-
-    /* support check */
-    ck_assert_str_eq(s_options['?'].name, "?");
-    ck_assert_int_eq(s_options['?'].req_val, NO_VAL);
-
-    ck_assert_str_eq(s_options['h'].name, "h");
-    ck_assert_int_eq(s_options['h'].req_val, NO_VAL);
-
-    ck_assert_str_eq(s_options['t'].name, "t");
-    ck_assert_int_eq(s_options['t'].req_val, NO_VAL);
-
-    ck_assert_str_eq(s_options['f'].name, "f");
-    ck_assert_int_eq(s_options['f'].req_val, NEED_VAL);
-
-    ck_assert_str_eq(s_options['s'].name, "s");
-    ck_assert_int_eq(s_options['s'].req_val, NEED_VAL);
-
-    //ck_assert_ptr_eq(s_options[0].name, NULL);
-    ck_assert_int_eq(s_options[0].name[0], NULL);
-    ck_assert_int_eq(s_options[0].req_val, NO_VAL);
-
-    /* un-support check */
-    for (int i=0; i<OPTION_ID_MAX; i++) {
-        if (i == '?'
-                || i == 'h'
-                || i == 't'
-                || i == 'f'
-                || i == 's'
-                || i == 0
-                ){
-            continue;
-        }
-        //ck_assert_ptr_eq(s_options[i].name, NULL);
-        ck_assert_int_eq(s_options[i].name[0], NULL);
-        ck_assert_int_eq(s_options[i].req_val, NO_VAL);
-    }
-}
-END_TEST
 
 START_TEST (test_get_option_type)
 {
+    char tmp_str[4];
     int tmp_id;
 
     /* support opt */
     tmp_id = get_option_type("?");
     ck_assert_int_eq(tmp_id, '?');
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
     tmp_id = get_option_type("h");
     ck_assert_int_eq(tmp_id, 'h');
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
     tmp_id = get_option_type("t");
     ck_assert_int_eq(tmp_id, 't');
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
     tmp_id = get_option_type("f");
     ck_assert_int_eq(tmp_id, 'f');
-    ck_assert_int_eq(s_options[tmp_id].req_val, NEED_VAL);
 
     tmp_id = get_option_type("s");
     ck_assert_int_eq(tmp_id, 's');
-    ck_assert_int_eq(s_options[tmp_id].req_val, NEED_VAL);
-
-    tmp_id = get_option_type(NULL);
-    ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
     /* un-support opt */
     tmp_id = get_option_type(NULL);
     ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
     tmp_id = get_option_type("");
     ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
-    tmp_id = get_option_type("no");
+    tmp_id = get_option_type("-");
     ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
     tmp_id = get_option_type("a");
     ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
-    tmp_id = get_option_type("ss");
+    tmp_id = get_option_type("no");
     ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
-
+    
     tmp_id = get_option_type("ffffffffffffffffffffffffffffffff");
     ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 
-    tmp_id = get_option_type("ffffffffffffffffffffffffffffffffff");
+    /* 负值, 会导致数组索引溢出 */
+    tmp_str[0] = 254;
+    tmp_str[1] = 0;
+    tmp_id = get_option_type(tmp_str);
     ck_assert_int_eq(tmp_id, 0);
-    ck_assert_int_eq(s_options[tmp_id].req_val, NO_VAL);
 }
 END_TEST
 
@@ -156,34 +95,35 @@ END_TEST
 START_TEST (test_get_options_RET_OK)
 {
     /* magic 5: ?/h/t/f/s */
-#define OPT_TYPE_MAX    5
+#define OPT_TYPE_MAX        5
+#define OPTION_VAL_LEN_MAX  32
 
 #define INIT_OPT_ARR() do{\
     i = 0;\
     for (int j=0; j<OPT_TYPE_MAX; j++){\
         tmp_opt[j] = NULL;\
-        (void)memset(&tmp_str[j][0], 0, OPTION_STR_LEN_MAX);\
+        (void)memset(&tmp_str[j][0], 0, OPTION_VAL_LEN_MAX);\
     }\
     tmp_opt[0] = &tmp_str[0][0];\
-    snprintf(tmp_str[0], OPTION_STR_LEN_MAX, "%s", "check_test");\
+    snprintf(tmp_str[0], OPTION_VAL_LEN_MAX, "%s", "check_test");\
     i++;\
 }while(0);
 
 #define INSERT_OPT_ARR(str) do{\
     char **_tmp_p_char = &tmp_opt[i];\
-    snprintf(&tmp_str[i][0], OPTION_STR_LEN_MAX, "%s", str);\
+    snprintf(&tmp_str[i][0], OPTION_VAL_LEN_MAX, "%s", str);\
     *_tmp_p_char = &tmp_str[i][0];\
     i++;\
 }while(0);
 
 #define INSERT_OPT_ARR_0(str) do{\
-    snprintf(&tmp_str[1][0], OPTION_STR_LEN_MAX, "%s", str);\
+    snprintf(&tmp_str[1][0], OPTION_VAL_LEN_MAX, "%s", str);\
     tmp_opt[1] = &tmp_str[1][0];\
     i = 2;\
 }while(0);
 
     int tmp_ret;
-    char tmp_str[OPT_TYPE_MAX][OPTION_STR_LEN_MAX];
+    char tmp_str[OPT_TYPE_MAX][OPTION_VAL_LEN_MAX];
     char *tmp_opt[OPT_TYPE_MAX];
     int i;
     
@@ -244,7 +184,7 @@ END_TEST
 
 START_TEST (test_get_options_RET_ERR)
 {
-    char tmp_str[OPT_TYPE_MAX][OPTION_STR_LEN_MAX];
+    char tmp_str[OPT_TYPE_MAX][OPTION_VAL_LEN_MAX];
     char *tmp_opt[OPT_TYPE_MAX];
     int tmp_ret;
     int i;
@@ -325,13 +265,6 @@ Suite * option_suite(void)
 
     /* create suite */
     s = suite_create("master/option.c");
-
-    /* create test */
-    tc_core = tcase_create("init_options_type");
-    /* add case to test */
-    tcase_add_test(tc_core, test_init_options_type);
-    /* add test to suite */
-    suite_add_tcase(s, tc_core);
 
     tc_core = tcase_create("get_option_type");
     tcase_add_checked_fixture(tc_core, setup, teardown);

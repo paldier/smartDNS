@@ -88,48 +88,19 @@ static inline const char* get_class_name(int rr_class)
     return NULL;
 }
 
-ZONE *get_zone(GLB_VARS *glb_vars, const char *au_domain)
+/* 利用宏定义, 定义函数 */
+ZONE *get_zone(GLB_VARS *glb_vars, char *au_domain) 
 {
-    ZONES *zones_p;
-    ZONE *zone_p;
+    ZONES *zones;
 
-    zones_p = (ZONES *)glb_vars->zones;
-    if (zones_p == NULL
-            || au_domain == NULL
-            || strlen(au_domain) == 0) {
-        return NULL;
-    }
-
-    for (int i=0; i<zones_p->zone_cnt; i++) {
-        zone_p = zones_p->zone[i];
-        if (strcmp(zone_p->name, au_domain) == 0) {
-            break;
-        }
-        zone_p = NULL;
-    }
-
-    return zone_p;
+    zones = (ZONES *)glb_vars->zones;
+    return GET_DDARR_ELEM_BYNAME(zones, zone, ZONE, au_domain);
 }
 
-RR *get_zone_rr_byname(ZONE *zone, const char *sub_domain)
+
+RR *get_rr(ZONE *zone, const char *sub_domain)
 {
-    RR *rr_p;
-    
-    if (zone == NULL 
-            || sub_domain == NULL
-            || strlen(sub_domain) == 0) {
-        return NULL;
-    }
-
-    for (int i=0; i<zone->rrs_cnt; i++) {
-        rr_p = zone->rrs[i];
-        if (strcmp(rr_p->name, sub_domain) == 0) {
-            break;
-        }
-
-        rr_p = NULL;
-    }
-    return rr_p;
+    return GET_DDARR_ELEM_BYNAME(zone, rr, RR, sub_domain);
 }
 
 int set_glb_default_ttl(void *zone, char *val)
@@ -356,11 +327,9 @@ int parse_rr(void *rr, char *val)
     return RET_OK;
 }
 
-ZONE *create_a_zone(GLB_VARS *glb_vars, char *zone_name)
+ZONE *create_zone(GLB_VARS *glb_vars, char *zone_name)
 {
     ZONES *tmp_zones;
-    void *tmp_zone_arr;
-    ZONE *tmp_zone;
 
     /* 是否第一次分配? */
     tmp_zones = (ZONES *)glb_vars->zones;
@@ -375,70 +344,13 @@ ZONE *create_a_zone(GLB_VARS *glb_vars, char *zone_name)
         SDNS_MEMSET(tmp_zones, 0, sizeof(ZONES));
     }
 
-    /* 是否需要扩展内存? */
-    if (tmp_zones->zone_cnt == tmp_zones->zone_total) {
-        if (tmp_zones->zone_total == 0) {
-            tmp_zones->zone_total = 1;
-        } else {
-            tmp_zones->zone_total += 2;
-        }
-
-        tmp_zone_arr = SDNS_REALLOC(tmp_zones->zone, 
-                sizeof(ZONE*) * tmp_zones->zone_total);
-        if (tmp_zone_arr == NULL) {
-            SDNS_LOG_ERR("realloc failed");
-            return NULL;
-        }
-
-        tmp_zones->zone = (ZONE **)tmp_zone_arr;
-    }
-
-    tmp_zone = SDNS_MALLOC(sizeof(ZONE));
-    if (tmp_zone == NULL) {
-        SDNS_LOG_ERR("malloc failed");
-        return NULL;
-    }
-    SDNS_MEMSET(tmp_zone, 0, sizeof(ZONE));
-    snprintf(tmp_zone->name, DOMAIN_LEN_MAX, "%s", zone_name);
-    tmp_zones->zone[tmp_zones->zone_cnt] = tmp_zone;
-    tmp_zones->zone_cnt++;
-
-    return tmp_zone;
+    return CREATE_DDARR_ELEM_BYNAME(glb_vars, tmp_zones, zone, 
+            ZONE, zone_name);
 }
 
-RR *create_a_rr(ZONE *zone)
+RR *create_rr(ZONE *zone, char *rr_name)
 {
-    void *tmp_rrs_arr;
-    RR *tmp_rr;
-
-    /* 是否需要扩展内存? */
-    if (zone->rrs == NULL
-            || zone->rrs_cnt == zone->rrs_total) {
-        if (zone->rrs_total == 0) {
-            zone->rrs_total = 100;
-        } else {
-            zone->rrs_total += 100;
-        }
-
-        tmp_rrs_arr = SDNS_REALLOC(zone->rrs, sizeof(RR*) * zone->rrs_total);
-        if (tmp_rrs_arr == NULL) {
-            SDNS_LOG_ERR("realloc failed");
-            return NULL;
-        }
-
-        zone->rrs = (RR **)tmp_rrs_arr;
-    }
-
-    tmp_rr = SDNS_MALLOC(sizeof(RR));
-    if (tmp_rr == NULL) {
-        SDNS_LOG_ERR("realloc failed");
-        return NULL;
-    }
-    SDNS_MEMSET(tmp_rr, 0, sizeof(RR));
-    zone->rrs[zone->rrs_cnt] = tmp_rr;
-    zone->rrs_cnt++;
-
-    return tmp_rr;
+    return CREATE_DDARR_ELEM_BYNAME(zone, zone, rr, RR, rr_name);
 }
 
 int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
@@ -467,7 +379,7 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
     }
 
     /* 分配ZONE内存 */
-    zone = create_a_zone(glb_vars, zone_name);
+    zone = create_zone(glb_vars, zone_name);
     if (zone == NULL) {
         SDNS_LOG_ERR("create zone failed");
         return RET_ERR;
@@ -481,7 +393,7 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
         char *token_p;
         int token_len;
 
-        /* 获取key */
+        /* 获取key, 不支持'/\*' '*\/' '"' */
         tmp_ret = get_a_token(tmp_buf, &token_p, &token_len);
         if (tmp_ret == RET_ERR 
                 || tmp_ret == RET_MULTI_COMMENT
@@ -502,27 +414,38 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
         if (handler) {
             tmp_ret = handler(zone, token_p + token_len);
         } else {
-            rr = create_a_rr(zone);
+            RR tmp_rr;
+
+            SDNS_MEMSET(&tmp_rr, 0, sizeof(RR));
+            tmp_ret = parse_rr(&tmp_rr, tmp_buf);
+
+            /* 赋值可选项 */
+            if (tmp_rr.ttl == 0) {
+                tmp_rr.ttl = zone->ttl;
+            }
+            if (tmp_rr.rr_class == 0) {
+                tmp_rr.rr_class = s_rr_class;
+            }
+            if (tmp_rr.name[0] == 0) {
+                snprintf(tmp_rr.name, sizeof(tmp_rr.name), "%s", s_rr_name);
+            }
+
+            /* 更新全局可选项 */
+            s_rr_class = tmp_rr.rr_class;
+            snprintf(s_rr_name, sizeof(s_rr_name), "%s", tmp_rr.name);
+
+            /* 创建RR */
+            rr = get_rr(zone, tmp_rr.name);
+            if (rr) {
+                SDNS_LOG_WARN("duplicate RR, (%s)", tmp_buf);
+                /* !!!会导致覆盖 */
+            }
+            rr = create_rr(zone, tmp_rr.name);
             if (rr == NULL) {
                 SDNS_LOG_ERR("create rr failed");
                 return RET_ERR;
             }
-            tmp_ret = parse_rr(rr, tmp_buf);
-
-            /* 赋值可选项 */
-            if (rr->ttl == 0) {
-                rr->ttl = zone->ttl;
-            }
-            if (rr->rr_class == 0) {
-                rr->rr_class = s_rr_class;
-            }
-            if (rr->name[0] == 0) {
-                snprintf(rr->name, sizeof(rr->name), "%s", s_rr_name);
-            }
-
-            /* 赋值全局可选项 */
-            s_rr_class = rr->rr_class;
-            snprintf(s_rr_name, sizeof(s_rr_name), "%s", rr->name);
+            SDNS_MEMCPY(rr, &tmp_rr, sizeof(RR));
         }
     }
 
@@ -546,11 +469,11 @@ void release_zone(GLB_VARS *glb_vars)
 
     for (int i=0; i<tmp_zones->zone_cnt; i++) {
         tmp_zone = tmp_zones->zone[i];
-        for (int j=0; j<tmp_zone->rrs_cnt; j++) {
-            SDNS_FREE(tmp_zone->rrs[j]);
+        for (int j=0; j<tmp_zone->rr_cnt; j++) {
+            SDNS_FREE(tmp_zone->rr[j]);
         }
 
-        SDNS_FREE(tmp_zone->rrs);
+        SDNS_FREE(tmp_zone->rr);
         SDNS_FREE(tmp_zone);
     }
 
@@ -578,8 +501,8 @@ void print_zone_parse_res(ZONE *zone)
     }
     printf("\n\n");
 
-    for (int i=0; i<zone->rrs_cnt; i++) {
-        rr = zone->rrs[i];
+    for (int i=0; i<zone->rr_cnt; i++) {
+        rr = zone->rr[i];
         if (rr == NULL) {
             SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");
             continue;

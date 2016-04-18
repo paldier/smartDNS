@@ -28,7 +28,7 @@ START_TEST (test_parse_zone_file)
     ck_assert_str_eq(zone->name, "example.com.");
     ck_assert_int_eq(zone->ttl, 86400);
 
-    rr = get_zone_rr_byname(zone, "ns1");
+    rr = get_rr(zone, "ns1");
     ck_assert_int_ne(rr, NULL);
     ck_assert_str_eq(rr->name, "ns1");
     ck_assert_int_eq(rr->type, TYPE_A);
@@ -39,7 +39,7 @@ START_TEST (test_parse_zone_file)
     ck_assert_str_eq(tmp_ip_str, "192.168.0.1");
 
     rr = NULL;
-    rr = get_zone_rr_byname(zone, "foo");
+    rr = get_rr(zone, "foo");
     ck_assert_int_ne(rr, NULL);
     ck_assert_str_eq(rr->name, "foo");
     ck_assert_int_eq(rr->type, TYPE_A);

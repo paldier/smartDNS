@@ -10,10 +10,9 @@
 
 /* 主配置文件, 其余域、key等配置文件应该和master.conf放置在同一目录 */
 #define CONF_FILE "/etc/smartDNS/master.conf"
-#define CONF_FILE_DIR "/etc/smartDNS/"
 
-/* 用于解析.conf文件 */
-static ZONE_CFG_INFO *s_zone_cfg = NULL;
+/* 用于解析.conf文件时, 传递行解析间的关联信息 */
+static ZONE_CFG_INFO *s_zone_cfg = NULL;    /* 当前解析的域 */
 
 /* 存储控制文件master.conf的元数据及处理指针 */
 static CFG_TYPE s_cfg_type_arr[] = {
@@ -21,27 +20,16 @@ static CFG_TYPE s_cfg_type_arr[] = {
     {"type", set_dev_type},
     {"file", save_zone_info_file},
     {"", (token_handler)NULL},
-};
+}; 
 
-ZONE_CFG_INFO *get_zone_cfg_slow(GLB_VARS *glb_vars, char *zone_name)
+/* 利用宏定义, 定义函数 */
+ZONE_CFG_INFO *get_zone_cfg(GLB_VARS *glb_vars, char *zone_name)
 {
-    CFG_INFO *cfg_info;
-    ZONE_CFG_INFO *zone_cfg;
+    CFG_INFO *cfg_info_arr;
 
-    cfg_info = (CFG_INFO *)glb_vars->conf;
-    if (cfg_info == NULL) {
-        return NULL;
-    }
-
-    for (int i=0; i<cfg_info->zone_cfg_num; i++) {
-        zone_cfg = cfg_info->zone_cfg[i];
-        if (strcmp(zone_cfg->name, zone_name) == 0) {
-            break;
-        }
-        zone_cfg = NULL;
-    }
-
-    return zone_cfg;
+    cfg_info_arr = (CFG_INFO *)glb_vars->conf;
+    return GET_DDARR_ELEM_BYNAME(cfg_info_arr, zone_cfg, 
+            ZONE_CFG_INFO, zone_name);
 }
 
 int create_zone_cfg(void *glb_vars, char *val)
@@ -53,18 +41,23 @@ int create_zone_cfg(void *glb_vars, char *val)
     GLB_VARS *glb_vars_p = (GLB_VARS *)glb_vars;
     CFG_INFO *cfg_info;
     ZONE_CFG_INFO *zone_cfg;
-    void *realloc_mem;
     int tmp_ret;
 
     /* 获取域名 */
     tmp_ret = get_a_token(val, &token_p, &token_len);
     if (tmp_ret == RET_ERR
             || token_p == NULL
-            || token_len >= TOKEN_NAME_LEN_MAX) {
+            || token_len > TOKEN_NAME_LEN_MAX) {
         SDNS_LOG_ERR("conf line format err! [%s]", val);
         return RET_ERR;
     }
+
+    /* magic 1: 末尾的0 */
     snprintf(zone_name, token_len + 1, "%s", token_p);
+    if (zone_name[token_len - 1] != '.') {
+        snprintf(zone_name + token_len, 
+                TOKEN_NAME_LEN_MAX - token_len - 1, ".");
+    }
 
     /* 提取配置信息结构 */
     cfg_info = (CFG_INFO *)glb_vars_p->conf;
@@ -79,43 +72,14 @@ int create_zone_cfg(void *glb_vars, char *val)
         glb_vars_p->conf = cfg_info;
     }
 
-    /* 是否已存在? */
-    zone_cfg = get_zone_cfg_slow(glb_vars_p, zone_name);
-    if (zone_cfg) {
-        s_zone_cfg = zone_cfg;
-        SDNS_LOG_WARN("duplicate zone, %s", zone_name);
-        return RET_OK;
-    }
-
-    /* 域配置信息结构指针数组是否耗尽? */
-    if (cfg_info->zone_cfg_total == cfg_info->zone_cfg_num) {
-        if (cfg_info->zone_cfg_total) {
-            cfg_info->zone_cfg_total = cfg_info->zone_cfg_total * 2;
-        } else {
-            cfg_info->zone_cfg_total = 1;
-        }
-        realloc_mem = SDNS_REALLOC(cfg_info->zone_cfg,
-                sizeof(ZONE_CFG_INFO *) * cfg_info->zone_cfg_total);
-        if (realloc_mem && realloc_mem != cfg_info->zone_cfg) {
-            cfg_info->zone_cfg = (ZONE_CFG_INFO **)realloc_mem;
-        } else {
-            SDNS_LOG_ERR("no enough mem");
-            return RET_ERR;
-        }
-    }
-
-    /* 分配域配置信息结构 */
-    zone_cfg = (ZONE_CFG_INFO *)malloc(sizeof(ZONE_CFG_INFO));
+    zone_cfg = CREATE_DDARR_ELEM_BYNAME(glb_vars_p, cfg_info, zone_cfg, 
+            ZONE_CFG_INFO, zone_name);
     if (zone_cfg == NULL) {
-        SDNS_LOG_ERR("no enough mem");
+        SDNS_LOG_ERR("create zone cfg fail");
         return RET_ERR;
     }
-    SDNS_MEMSET(zone_cfg, 0, sizeof(ZONE_CFG_INFO));
-    cfg_info->zone_cfg[cfg_info->zone_cfg_num] = zone_cfg;
-    cfg_info->zone_cfg_num++;
 
     /* 填充域名 */
-    snprintf(zone_cfg->name, TOKEN_NAME_LEN_MAX, "%s", zone_name);
     s_zone_cfg = zone_cfg;
 
     return RET_OK;
@@ -138,7 +102,10 @@ int set_dev_type(void *glb_vars, char *val)
 
     if (strncmp(token_p, "master", token_len) == 0) {
         s_zone_cfg->dev_type = 1;
+    } else if (strncmp(token_p, "slave", token_len) == 0) {
+        s_zone_cfg->dev_type = 0;
     } else {
+        SDNS_LOG_WARN("UNknown type by (%s)", val);
         s_zone_cfg->dev_type = 0;
     }
 
@@ -256,7 +223,7 @@ int zone_parse(GLB_VARS *glb_vars)
         return RET_OK;
     }
 
-    for (int i=0; i<cfg_info->zone_cfg_num; i++) {
+    for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
         zone_cfg = cfg_info->zone_cfg[i];
 
         tmp_ret = parse_zone_file(glb_vars, zone_cfg->name, zone_cfg->file);
@@ -281,7 +248,7 @@ void release_conf(GLB_VARS *glb_vars)
     }
 
     /* 释放域控制信息结构体ZONE_CFG_INFO */
-    for (int i=0; i<cfg_info->zone_cfg_num; i++) {
+    for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
         zone_cfg = cfg_info->zone_cfg[i];
         SDNS_FREE((void *)zone_cfg);
     }
@@ -302,7 +269,7 @@ void print_cfg_parse_res(GLB_VARS *glb_vars)
     }
 
     /* 打印域控制信息 */
-    for (int i=0; i<cfg_info->zone_cfg_num; i++) {
+    for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
         zone_cfg = cfg_info->zone_cfg[i];
         if (zone_cfg == NULL) {
             SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");

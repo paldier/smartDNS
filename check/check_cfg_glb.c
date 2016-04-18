@@ -35,6 +35,9 @@ START_TEST (test_get_token_handler)
 
     tmp_hdler = get_token_handler(tmp_test_arr, NULL);
     ck_assert_int_eq(tmp_hdler, 0);
+
+    tmp_hdler = get_token_handler(NULL, NULL);
+    ck_assert_int_eq(tmp_hdler, 0);
 }
 END_TEST
 

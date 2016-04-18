@@ -4,21 +4,10 @@
 #include "util_glb.h"
 
 /**
- * master.conf约定:
- *  1) 注释方法有"/\**\/", "//", "#"
- *  2) 配置语句以";"结束
- *  3) 支持的token是Bind的子集
- *  4) 配置格式同Bind
+ * 定义.conf/.zone文件支持的元字符及处理逻辑
  *
- * xxx.zone约定:
- *  1) 以";"标识注释
- *  2) 换行标识单条记录
- *  3) SOA配置用()包括
- *  4) 其余遵照Bind配置文件
- */
-
-/**
- * 定义.conf/.zone文件支持的元字符
+ * <NOTE>
+ *  1) 当name为*时, 为全部匹配, 必须放置在最后;
  */
 #define LINE_LEN_MAX    512         /* 配置文件单行包含的最大字符数 */
 #define TOKEN_NAME_LEN_MAX  255     /* token字符串的最大长度, 域名长度 */
@@ -30,7 +19,7 @@ typedef struct st_cfg_token {
 /**
  * 获取token对应的处理函数
  * @param tk_arr: [in], 待搜索的token数组
- * @param token: [in], 类型字符串
+ * @param token: [in], 待匹配的元字符
  * @retval: 处理函数/NULL
  */
 token_handler get_token_handler(CFG_TYPE *tk_arr, char *token);
@@ -111,7 +100,7 @@ void release_zone(GLB_VARS *glb_vars);
  *          回车符: "\r" 
  *          WIN换行符: "\r\n"
  *          双引号: "
- *          配置体[{ | }]
+ *          配置体[{ | } | ( | )]
  *
  *     暂时不支持的特殊字符
  *          格式转换符: \
@@ -122,6 +111,123 @@ void release_zone(GLB_VARS *glb_vars);
 #define RET_MULTI_COMMENT   (RET_COMMENT + 1)
 #define RET_BRACE           (RET_MULTI_COMMENT + 1)
 int get_a_token(char *buf, char **token, int *token_len);
+
+/**
+ * 示例一:
+ *  #define STRING(x)  #x
+ *  char *pChar = "hello";      ==>     char *pChar = STRING(hello);
+ *
+ * 示例二:
+ *  #define makechar(x) #@x
+ *  char ch = makechar(b);      ==>     char ch = 'b';
+ *
+ * 示例三:
+ * #define link(n)  token##n
+ * int link(9)  = 100;          ==>     int token9   = 100;
+ *
+ * <NOTE>嵌套宏遇到##或#不再展开的问题
+ *  #define STRING(x)   #x
+ *  char *pChar = STRING(__FILE__); ==> char *pChar = "__FILE__";
+ *
+ *  引入中间宏, 展开外层的宏
+ *  #define _STRING(x)  #x
+ *  #define STRING(x)   _STRING(x) 
+ *  char *pChar = STRING(__FILE__); ==> char *pChar = "\"/usr/.../test.c\"";
+ */
+
+/**
+ * 从指针数组中查找对应名称的元素指针
+ * @param dd_arr: 指针数组封装结构
+ * @param dd_var: 指针变量[dd_arr->dd_var], 指向指针数组
+ * @param e_type: 待返回元素的类型
+ * @param e_name: 元素名
+ * @retval: NULL/元素指针
+ *
+ * @note
+ *  1) 此处传入参数e_type, 而不是利用__typeof__()函数直接由
+ *      dd_arr->dd_var推断得到, 是因为dd_arr有NULL的可能,
+ *      此时代码的逻辑组织变得异常复杂, 虽然测试时传入NULL
+ *      不会引入编译问题(也不会引入运行问题)
+ */
+#define GET_DDARR_ELEM_BYNAME(dd_arr, dd_var, e_type, e_name) ({\
+    e_type *_tmp_elem;\
+    \
+    if ((dd_arr) == NULL\
+            || e_name == NULL\
+            || strlen(e_name) == 0) {\
+        SDNS_LOG_ERR("param err, [%p] - [%s]", (dd_arr), e_name);\
+        _tmp_elem = NULL;   /*do nothing*/\
+    } else {\
+        _tmp_elem = NULL;\
+        for (int i=0; i<(dd_arr)->dd_var##_cnt; i++) {\
+            _tmp_elem = (dd_arr)->dd_var[i];\
+            if (strcmp(_tmp_elem->name, e_name) == 0) {\
+                break;\
+            }\
+            _tmp_elem = NULL;\
+        }\
+    }\
+    \
+    _tmp_elem;\
+});
+
+/**
+ * 在指针数组中添加一个元素
+ * @param g_var: 为get_##dd_var()函数所用
+ * @param dd_arr: 指针数组封装结构
+ * @param dd_var: 指针变量[dd_arr->dd_var], 指向指针数组
+ * @param e_type: 待返回元素的类型
+ * @param e_name: 元素名
+ * @retval: NULL/元素指针
+ */
+#define CREATE_DDARR_ELEM_BYNAME(g_var, dd_arr, dd_var, e_type, e_name) ({\
+    void *_tmp_dd_arr;\
+    e_type *_tmp_elem;\
+    \
+    /* 是否已存在? */\
+    if (strlen(e_name)) {\
+        _tmp_elem = get_##dd_var(g_var, e_name);\
+        if (_tmp_elem) {\
+            SDNS_LOG_WARN("duplicate (%s)", e_name);\
+            goto _INNER_LABEL_END;\
+        }\
+    }\
+    \
+    /* 是否需要扩展指针数组内存? */\
+    if ((dd_arr)->dd_var##_cnt == (dd_arr)->dd_var##_total) {\
+        if ((dd_arr)->dd_var##_total == 0) {\
+            (dd_arr)->dd_var##_total = 5;\
+        } else {\
+            (dd_arr)->dd_var##_total += 5;\
+        }\
+        \
+        _tmp_dd_arr = SDNS_REALLOC((dd_arr)->dd_var,\
+                sizeof(__typeof__(e_type *)) * (dd_arr)->dd_var##_total);\
+        if (_tmp_dd_arr == NULL) {\
+            SDNS_LOG_ERR("realloc failed");\
+            _tmp_elem = NULL;\
+            goto _INNER_LABEL_END;\
+        }\
+        \
+        (dd_arr)->dd_var = _tmp_dd_arr;\
+    }\
+    \
+    /* 分配元素内存 */\
+    _tmp_elem = SDNS_MALLOC(sizeof(e_type));\
+    if (_tmp_elem == NULL) {\
+        SDNS_LOG_ERR("malloc failed");\
+        goto _INNER_LABEL_END;\
+    }\
+    \
+    /* 初始化元素 */\
+    SDNS_MEMSET(_tmp_elem, 0, sizeof(e_type));\
+    snprintf(_tmp_elem->name, sizeof(_tmp_elem->name), "%s", e_name);\
+    (dd_arr)->dd_var[(dd_arr)->dd_var##_cnt] = _tmp_elem;\
+    (dd_arr)->dd_var##_cnt++;\
+    \
+_INNER_LABEL_END:\
+    _tmp_elem;\
+});
 
 #endif /* CFG_GLB_H */
 

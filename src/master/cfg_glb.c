@@ -7,7 +7,9 @@ token_handler get_token_handler(CFG_TYPE *tk_arr, char *token)
 {
     int i = 0;
 
-    if (tk_arr == NULL || token == NULL) {
+    if (tk_arr == NULL 
+            || token == NULL
+            || strlen(token) == 0) {
         return NULL;
     }
 
