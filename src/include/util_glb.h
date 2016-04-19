@@ -27,17 +27,19 @@ enum{
  *      conf包含了域的控制信息, 如ACL/域信息文件等
  *      zones则包含了具体的域记录, 如RR/SOA等
  *  3) 域名请求时, 搜索conf/zones得到对应的RR记录, 并将结果写
- *      入高速缓存; 后续直接走高速缓存
+ *      入高速缓存; 后续直接走高速缓存(各worker进程独有)
+ *  4) 后续conf和zones移动到共享内存
  */
 typedef struct st_glb_variables{
 #define CONF_FILE_LEN   32
 #define SIGNAL_STR_LEN  32
+#define WORKER_NUM_MAX  5
     int process_role;               /* 进程角色 */
     char conf_file[CONF_FILE_LEN];  /* 配置文件, -f指定 */
     char signal[SIGNAL_STR_LEN];    /* 处理信号, -s指定 */
+    pid_t child_pid[WORKER_NUM_MAX];/* 记录worker + 监控进程号 */
     void *conf;                     /* .conf配置信息, CFG_INFO */
     void *zones;                    /* .zone域信息, ZONES */
-    void *cache;                    /* 用于应答域名请求的高速缓存 */
     void *sh_mem;                   /* 共享内存 */
 }GLB_VARS;
 

@@ -5,6 +5,8 @@
 #include "util_glb.h"
 #include "cfg_glb.h"
 #include "engine_glb.h"
+#include "worker_glb.h"
+#include "signal_glb.h"
 #include "log_glb.h"
 
 GLB_VARS g_glb_vars;
@@ -27,12 +29,14 @@ int main(int argc, char **argv)
 
     /* 日志初始化 */
     if (log_init(&g_glb_vars) == RET_ERR) {
+        SDNS_LOG_ERR("log init failed");
         return 1;
     }
 
     /* 处理命令行参数 */
     if (get_options(argc, argv, &g_glb_vars) == RET_ERR) {
         usage_help();
+        SDNS_LOG_ERR("parse cmd line failed");
         return 1;
     }
 
@@ -44,34 +48,43 @@ int main(int argc, char **argv)
 
     /* 解析配置文件.conf */
     if (cfg_parse(&g_glb_vars) == RET_ERR) {
+        SDNS_LOG_ERR("parse .conf failed");
         return 1;
     }
 
     /* 解析域信息文件*.zone */
     if (zone_parse(&g_glb_vars) == RET_ERR) {
+        SDNS_LOG_ERR("parse .zone failed");
         return 1;
     }
 
     /* 报文收发引擎初始化 */
     if (pkt_engine_init() == RET_ERR) {
+        SDNS_LOG_ERR("engine init failed");
+        return 1;
+    }
+
+    /* 启动工作进程 */
+    start_worker(&g_glb_vars);
+
+    /* 启动收发报文引擎 */
+    if (start_pkt_engine() == RET_ERR) {
+        SDNS_LOG_ERR("start engine failed");
         return 1;
     }
 
 #if 0
-    /* 启动工作进程 */
-    start_worker();
-
-    /* 启动收发报文引擎 */
-    if (start_pkt_engine() == RET_ERR) {
+    /* 主循环, 处理信号 */
+    if (set_signal_handlers() == RET_ERR) {
+        SDNS_LOG_ERR("set signal handler failed");
         return 1;
     }
+#endif
 
-    /* 主循环, 处理信号 */
-    set_signal_handlers();
     for(;;) {
         /* SIG_CLD */
+        sleep(2);
     }
-#endif
 
     /* 释放动态申请的资源 */
     release_resource(&g_glb_vars);
