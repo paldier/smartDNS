@@ -108,7 +108,23 @@ int block_required_signal()
 {
     if (sigprocmask(SIG_BLOCK, &s_set, NULL) == -1) {
         SDNS_LOG_ERR("mask signal failed");
+        return RET_ERR;
+    }
 
+    return RET_OK;
+}
+
+int clear_mask_signal()
+{
+    sigset_t tmp_set;
+
+    if (sigemptyset(&tmp_set) == -1) {
+        SDNS_LOG_ERR("%s", strerror(errno));
+        return RET_ERR;
+    }
+
+    if (sigprocmask(SIG_SETMASK, &tmp_set, NULL) == -1) {
+        SDNS_LOG_ERR("clear mask failed");
         return RET_ERR;
     }
 

@@ -11,6 +11,13 @@ int block_required_signal();
 int wait_required_signal();
 
 /**
+ * 清楚信号屏蔽, 即开始接收信号
+ * @param void
+ * @retval: RET_OK/RET_ERR
+ */
+int clear_mask_signal();
+
+/**
  * 处理进程信号
  * @param glb_vars: [in][out], 全局变量集合
  * @retval: RET_OK/RET_ERR

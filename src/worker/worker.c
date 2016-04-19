@@ -1,6 +1,7 @@
 #include "util_glb.h"
 #include "engine_glb.h"
 #include "worker_glb.h"
+#include "signal_glb.h"
 #include "log_glb.h"
 #include "worker.h"
 
@@ -50,6 +51,12 @@ void start_worker(GLB_VARS *glb_vars)
 
     /* 启动其他worker进程 */
     start_other_worker(glb_vars);
+
+    /* 去除信号屏蔽 */
+    if (clear_mask_signal() == RET_ERR) {
+        SDNS_LOG_DEBUG("In worker[%d], clear signal mask failed", getpid());
+        return;
+    }
 
     /* 主处理流程 */
     for (;;) {
