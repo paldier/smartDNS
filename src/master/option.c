@@ -1,5 +1,3 @@
-#include <string.h>     /* for memset() */
-#include <stdio.h>      /* for snprintf() */
 #include "util_glb.h"
 #include "cfg_glb.h"
 #include "log_glb.h"

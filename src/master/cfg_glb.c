@@ -1,4 +1,3 @@
-#include <string.h>         /* for strcmp() */
 #include <stdbool.h>        /* for true/false */
 #include "log_glb.h"
 #include "cfg_glb.h"

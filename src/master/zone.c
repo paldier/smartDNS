@@ -1,10 +1,6 @@
-#include <stdio.h>          /* for snprintf() */
-#include <stdlib.h>         /* for atoi() */
 #include <stdbool.h>        /* for bool+false+true */
-#include <string.h>         /* for strcmp() */
 #include <arpa/inet.h>      /* for inet_pton() */
 #include <libgen.h>         /* for dirname() */
-#include <errno.h>          /* for errno/strerror() */
 #include "log_glb.h"
 #include "cfg_glb.h"
 #include "zone.h"

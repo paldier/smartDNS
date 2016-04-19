@@ -1,7 +1,5 @@
-#include <stdio.h>      /* for vsnprintf(), fopen() */
 #include <stdarg.h>     /* for va_list */
 #include <unistd.h>     /* for write() */
-#include <string.h>     /* for strlen() */
 #include "log_glb.h"
 #include "log.h"
 

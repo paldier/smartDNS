@@ -1,7 +1,12 @@
 #ifndef UTIL_GLB_H
 #define UTIL_GLB_H
 
-#include <unistd.h>
+#include <stdlib.h>         /* for malloc/free/realloc()*/
+#include <string.h>         /* for memset/memcpy/strerror() */
+#include <sys/types.h>
+#include <unistd.h>         /* for fork/getpid()/pid_t */
+#include <errno.h>          /* for errno */
+#include <stdio.h>          /* for fopen/printf() */
 
 /* 定义返回值 */
 #define RET_OK      0

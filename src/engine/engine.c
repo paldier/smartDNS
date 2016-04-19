@@ -1,8 +1,5 @@
-#include <sys/types.h>          /* for socket/bind() */
 #include <sys/socket.h>         /* for recvmsg() */
 #include <arpa/inet.h>          /* for htonl()/struct sockaddr_in */
-#include <string.h>             /* for memset()/strerror() */
-#include <errno.h>              /* for errno */
 #include "util_glb.h"
 #include "engine_glb.h"
 #include "log_glb.h"

@@ -1,8 +1,4 @@
-#include <string.h>         /* for strcmp() */
 #include <stdbool.h>        /* for true/false */
-#include <errno.h>          /* for errno */
-#include <stdlib.h>         /* for malloc()... */
-#include <stdio.h>          /* for fopen() */
 #include "util_glb.h"
 #include "cfg_glb.h"
 #include "log_glb.h"

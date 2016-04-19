@@ -1,7 +1,6 @@
 /**
  * 智能DNS入口文件, 协调各模块儿运行
  */
-#include <string.h>         /* for memset() */
 #include "util_glb.h"
 #include "cfg_glb.h"
 #include "engine_glb.h"
@@ -64,6 +63,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    /* 处理信号 */
+    if (set_required_signal() == RET_ERR
+            || block_required_signal() == RET_ERR) {
+        SDNS_LOG_ERR("signal init failed");
+        return 1;
+    }
+
     /* 启动工作进程 */
     start_worker(&g_glb_vars);
 
@@ -73,17 +79,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
-#if 0
-    /* 主循环, 处理信号 */
-    if (set_signal_handlers() == RET_ERR) {
-        SDNS_LOG_ERR("set signal handler failed");
-        return 1;
-    }
-#endif
-
+    /* 主循环 */
     for(;;) {
-        /* SIG_CLD */
-        sleep(2);
+        /* 等待信号 */
+        (void)wait_required_signal();
+
+        /* 处理信号 */
+        (void)process_signals(&g_glb_vars);
     }
 
     /* 释放动态申请的资源 */
