@@ -1,7 +1,17 @@
 #include <stdio.h>
 #include "check_main.h"
 #include "cfg_glb.h"
+#include "log_glb.h"
 
+static void setup(void)
+{
+    log_init();
+}
+
+static void teardown(void)
+{
+    ;           /* do nothing */
+}
 
 START_TEST (test_get_token_handler)
 {
@@ -222,10 +232,12 @@ Suite * cfg_glb_suite(void)
     s = suite_create("master/cfg_glb.c");
 
     tc_core = tcase_create("get_token_handler");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
     tcase_add_test(tc_core, test_get_token_handler);
     suite_add_tcase(s, tc_core);
 
     tc_core = tcase_create("get_a_token");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
     tcase_add_test(tc_core, test_get_a_token);
     suite_add_tcase(s, tc_core);
 

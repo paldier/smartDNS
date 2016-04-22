@@ -2,6 +2,8 @@
 #include "engine_glb.h"
 #include "worker_glb.h"
 #include "signal_glb.h"
+#include "pkt_dispose_glb.h"
+#include "dns_glb.h"
 #include "log_glb.h"
 #include "worker.h"
 
@@ -17,6 +19,32 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
         SDNS_LOG_ERR("param err");
         return RET_ERR;
     }
+
+    /* 解析报文 */
+    if (parse_pkt(pkt) == RET_ERR) {
+        SDNS_LOG_ERR("parse failed");
+        return RET_ERR;
+    }
+
+#if 0
+    /* 查表 */
+    if (query_dns(glb_vars, pkt) == RET_ERR) {
+        SDNS_LOG_ERR("query failed");
+        return RET_ERR;
+    }
+
+    /* 排序算法: DRF + GeoIP */
+    if (sort_answer(glb_vars, pkt) == RET_ERR) {
+        SDNS_LOG_ERR("sort failed");
+        return RET_ERR;
+    }
+
+    /* 组装应答报文 */
+    if (cons_pkt(pkt) == RET_ERR) {
+        SDNS_LOG_ERR("cons failed");
+        return RET_ERR;
+    }
+#endif
 
     return RET_OK;
 }

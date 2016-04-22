@@ -7,10 +7,19 @@
 #include <unistd.h>         /* for fork/getpid()/pid_t */
 #include <errno.h>          /* for errno */
 #include <stdio.h>          /* for fopen/printf() */
+#include <stdint.h>         /* for uint32_t/.. */ 
+#include <arpa/inet.h>      /* for htons/inet_pton()/.. */
 
 /* 定义返回值 */
 #define RET_OK      0
 #define RET_ERR     -1
+
+
+#define DNS_PORT        htons(53)   /* 定义DNS知名端口号 */
+#define LABEL_LEN_MAX   63      /* 域名中单个label长度最大值 */
+#define DOMAIN_LEN_MAX  255     /* 域名最大长度, 包括结尾的0x00 label */
+#define RR_TYPE_MAX     1       /* 支持的域名种类 */
+#define RR_PER_TYPE_MAX 1       /* 单个域名同类型支持的记录数 */
 
 /* 定义进程角色 */
 enum{

@@ -1,27 +1,26 @@
 #include <stdbool.h>        /* for bool+false+true */
-#include <arpa/inet.h>      /* for inet_pton() */
 #include <libgen.h>         /* for dirname() */
+#include "util_glb.h"
 #include "log_glb.h"
 #include "cfg_glb.h"
 #include "zone.h"
 
-
-/* 用于解析流程 */
-static int s_rr_class;
-static char s_rr_name[LABEL_LEN_MAX + 1];
+/* 用于解析流程, 保存上一次的解析结果, 便于继承 */
+static RR_DATA s_rr_data = {0};
+static char s_rr_name[LABEL_LEN_MAX + 1];   /* magic 1: 结尾\0 */
 
 /* 域配置文件*.zone非RR记录关键字 */
 static CFG_TYPE s_zone_key_arr[] = {
     {"$TTL", set_glb_default_ttl},
     {"$ORIGIN", set_glb_au_domain_suffix},
-    {"", (token_handler)NULL},
+    {NULL, NULL}
 };
 
 /* 域配置文件*.zone RR记录关键字 */
 static CFG_TYPE s_rr_key_arr[] = {
     {"A", set_rr_type_A},
     {"IN", set_rr_class_IN},
-    {"", (token_handler)NULL},
+    {NULL, NULL}
 };
 
 /**
@@ -30,9 +29,18 @@ static CFG_TYPE s_rr_key_arr[] = {
 static const struct {
     const char *name;       /* 配置文件中的名字 */
     int value;              /* 报文中的值 */
-} types[] = {
+} types[RR_TYPE_MAX + 1] = {
     {"A",   TYPE_A},
     {0, 0}
+};
+
+/**
+ * 快速转换数组, RR的TYPE => types[]索引
+ * 此索引等同于RR->data[]的索引
+ */
+static int type_to_arr_index[TYPE_MAX] = {
+    RR_TYPE_MAX,
+    0,                      /* TYPE_A */
 };
 
 /**
@@ -82,6 +90,20 @@ static inline const char* get_class_name(int rr_class)
     }
 
     return NULL;
+}
+
+char *get_static_rr_name()
+{
+    return s_rr_name;
+}
+
+int get_arr_index_by_type(int type)
+{
+    if (type > TYPE_MAX) {
+        return RR_TYPE_MAX;
+    }
+
+    return type_to_arr_index[type];
 }
 
 /* 利用宏定义, 定义函数 */
@@ -156,40 +178,39 @@ int set_glb_au_domain_suffix(void *zone, char *val)
     }
 
     tmp_zone = (ZONE *)zone;
-    snprintf(tmp_zone->origin_name, DOMAIN_LEN_MAX, "%s", token);
+    snprintf(tmp_zone->origin_name, sizeof(tmp_zone->origin_name), 
+            "%s", token);
 
     return RET_OK;
 }
 
 int set_rr_name(void *rr, char *val)
 {
-    RR *tmp_rr = (RR *)rr;
-
-    snprintf(tmp_rr->name, sizeof(tmp_rr->name), "%s", val);
+    snprintf(s_rr_name, sizeof(s_rr_name), "%s", val);
 
     return RET_OK;
 }
 
 int set_rr_ttl(void *rr, char *val)
 {
-    RR *tmp_rr = (RR *)rr;
+    RR_DATA *tmp_rr_data = (RR_DATA *)rr;
 
-    tmp_rr->ttl = atoi(val);
+    tmp_rr_data->ttl = atoi(val);
 
     return RET_OK;
 }
 
 int set_rr_rdata(void *rr, char *val)
 {
-    RR *tmp_rr = (RR *)rr;
+    RR_DATA *tmp_rr_data = (RR_DATA *)rr;
     struct in_addr addr;
     int tmp_ret;
 
-    switch (tmp_rr->type) {
+    switch (tmp_rr_data->type) {
         case TYPE_A:
             tmp_ret = inet_pton(AF_INET, val, (void *)&addr);
             if (tmp_ret) {
-                tmp_rr->rdata[0].ip4 = addr.s_addr;
+                tmp_rr_data->data[0].ip4 = addr.s_addr;
                 tmp_ret = RET_OK;
             } else {
                 SDNS_LOG_ERR("(%s): %s", val, 
@@ -199,7 +220,7 @@ int set_rr_rdata(void *rr, char *val)
             break;
         default:
             tmp_ret = RET_ERR;
-            SDNS_LOG_ERR("NOT support type (%d)", tmp_rr->type);
+            SDNS_LOG_ERR("NOT support type (%d)", tmp_rr_data->type);
             break;
     }
 
@@ -208,18 +229,18 @@ int set_rr_rdata(void *rr, char *val)
 
 int set_rr_type_A(void *rr, char *val)
 {
-    RR *tmp_rr = (RR *)rr;
+    RR_DATA *tmp_rr_data = (RR_DATA *)rr;
 
-    tmp_rr->type = TYPE_A;
+    tmp_rr_data->type = TYPE_A;
 
     return RET_OK;
 }
 
 int set_rr_class_IN(void *rr, char *val)
 {
-    RR *tmp_rr = (RR *)rr;;
+    RR_DATA *tmp_rr_data = (RR_DATA *)rr;;
 
-    tmp_rr->rr_class = CLASS_IN;
+    tmp_rr_data->rr_class = CLASS_IN;
 
     return RET_OK;
 }
@@ -249,7 +270,7 @@ int parse_rr(void *rr, char *val)
     char *token_p;       
     int token_len;
     char token[TOKEN_NAME_LEN_MAX];
-    RR *tmp_rr;
+    RR_DATA *tmp_rr_data;
     token_handler handler;
     bool need_data = false;
     int tmp_ret;
@@ -263,7 +284,7 @@ int parse_rr(void *rr, char *val)
 
     token_p = val;
     token_len = 0;
-    tmp_rr = (RR *)rr;
+    tmp_rr_data = (RR_DATA *)rr;
 
     /* get all tokens */
     while (1) {
@@ -298,13 +319,13 @@ int parse_rr(void *rr, char *val)
          * 3) 目前未考虑其他情况, 只是报告WARNNING
          */
         if (handler) {
-            tmp_ret = handler(tmp_rr, token);
+            tmp_ret = handler(tmp_rr_data, token);
         } else if (!need_data) {
-            tmp_ret = set_rr_name(tmp_rr, token);
+            tmp_ret = set_rr_name(tmp_rr_data, token);
         } else if (is_digit(token)) {
-            tmp_ret = set_rr_ttl(tmp_rr, token);
+            tmp_ret = set_rr_ttl(tmp_rr_data, token);
         } else if (need_data) {
-            tmp_ret = set_rr_rdata(tmp_rr, token);
+            tmp_ret = set_rr_rdata(tmp_rr_data, token);
         } else {
             /* <NOTE>不应该运行至此 */
             SDNS_LOG_WARN("should NOT be here! (%s)", token);
@@ -364,6 +385,17 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
         return RET_ERR;
     }
 
+    /* 检测TYPE_MAX与RR_TYPE_MAX的关系 */
+    for (int i=0; i<TYPE_MAX; i++) {
+        tmp_ret = type_to_arr_index[i];
+        if (tmp_ret > RR_TYPE_MAX) {
+            SDNS_LOG_ERR("type index ID[%d] > RR_TYPE_MAX[%d]", 
+                    tmp_ret, RR_TYPE_MAX);
+            return RET_ERR;
+        }
+    }
+
+    /* 构建文件绝对路径 */
     tmp_ret = snprintf(tmp_buf, LINE_LEN_MAX,
             "%s/", dirname(((GLB_VARS *)glb_vars)->conf_file));
     snprintf(tmp_buf + tmp_ret, LINE_LEN_MAX, "%s", zone_file);
@@ -410,38 +442,33 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
         if (handler) {
             tmp_ret = handler(zone, token_p + token_len);
         } else {
-            RR tmp_rr;
+            /* 只清空必须项, 这样其余项继承前一次解析的结果 */
+            s_rr_data.type = 0;
+            s_rr_data.cnt = 0;
+            SDNS_MEMSET(s_rr_data.data, 0, sizeof(s_rr_data.data));
+            tmp_ret = parse_rr(&s_rr_data, tmp_buf);
 
-            SDNS_MEMSET(&tmp_rr, 0, sizeof(RR));
-            tmp_ret = parse_rr(&tmp_rr, tmp_buf);
-
-            /* 赋值可选项 */
-            if (tmp_rr.ttl == 0) {
-                tmp_rr.ttl = zone->ttl;
+            /* 创建RR, 不直接调用create_rr(), 避免报"maybe duplicate" */
+            rr = get_rr(zone, s_rr_name);
+            if (rr == NULL) {
+                rr = create_rr(zone, s_rr_name);
             }
-            if (tmp_rr.rr_class == 0) {
-                tmp_rr.rr_class = s_rr_class;
-            }
-            if (tmp_rr.name[0] == 0) {
-                snprintf(tmp_rr.name, sizeof(tmp_rr.name), "%s", s_rr_name);
-            }
-
-            /* 更新全局可选项 */
-            s_rr_class = tmp_rr.rr_class;
-            snprintf(s_rr_name, sizeof(s_rr_name), "%s", tmp_rr.name);
-
-            /* 创建RR */
-            rr = get_rr(zone, tmp_rr.name);
-            if (rr) {
-                SDNS_LOG_WARN("duplicate RR, (%s)", tmp_buf);
-                /* !!!会导致覆盖 */
-            }
-            rr = create_rr(zone, tmp_rr.name);
             if (rr == NULL) {
                 SDNS_LOG_ERR("create rr failed");
                 return RET_ERR;
             }
-            SDNS_MEMCPY(rr, &tmp_rr, sizeof(RR));
+
+            /* 拷贝数据 */
+            RR_DATA *tmp_rr_data = 
+                &(rr->data[type_to_arr_index[s_rr_data.type]]);
+            tmp_rr_data->type = s_rr_data.type;
+            tmp_rr_data->rr_class = s_rr_data.rr_class;
+            tmp_rr_data->ttl = s_rr_data.ttl;
+            if (tmp_rr_data->ttl == 0) {
+                tmp_rr_data->ttl = zone->ttl;
+            }
+            SDNS_MEMCPY(&tmp_rr_data->data[tmp_rr_data->cnt], 
+                    &s_rr_data.data[0], sizeof(s_rr_data.data[0]));
         }
     }
 
@@ -481,6 +508,7 @@ void print_zone_parse_res(ZONE *zone)
 {
     char tmp_addr[INET_ADDRSTRLEN];
     RR *rr;
+    RR_DATA *rr_data;
 
     if (zone == NULL) {
         return;
@@ -504,18 +532,23 @@ void print_zone_parse_res(ZONE *zone)
             continue;
         }
 
-        if (rr->type == TYPE_A) {
-            printf("%s\t%s\t%s\t%d\t%s\n", 
-                    rr->name,
-                    get_class_name(rr->rr_class),
-                    get_type_name(rr->type),
-                    rr->ttl,
-                    inet_ntop(AF_INET, &rr->rdata[0].ip4,
-                        tmp_addr, INET_ADDRSTRLEN)
-                    );
-        } else {
-            SDNS_LOG_ERR("NOT support type, DEBUG IT!!!");
-            continue;
+        for (int j=0; j<RR_TYPE_MAX; j++) {
+            rr_data = &(rr->data[j]);
+
+            if (rr_data->cnt == 0) {
+                continue;
+            }
+
+            for (int k=0; k<rr_data->cnt; k++) {
+                printf("%s\t%s\t%s\t%d\t%s\n", 
+                        rr->name,
+                        get_class_name(rr_data->rr_class),
+                        get_type_name(rr_data->type),
+                        rr_data->ttl,
+                        inet_ntop(AF_INET, &rr_data->data[k].ip4,
+                            tmp_addr, INET_ADDRSTRLEN)
+                      );
+            }
         }
     }
 

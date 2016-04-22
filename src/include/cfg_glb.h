@@ -13,7 +13,7 @@
 #define TOKEN_NAME_LEN_MAX  255     /* token字符串的最大长度, 域名长度 */
 typedef int (*token_handler)(void *conf_st, char *val);
 typedef struct st_cfg_token {
-    char name[TOKEN_NAME_LEN_MAX];  /* 元数据类型名 */
+    const char *name;               /* 元数据类型名 */
     token_handler dispose;          /* 处理句柄 */
 }CFG_TYPE;
 /**
@@ -188,7 +188,7 @@ int get_a_token(char *buf, char **token, int *token_len);
     if (strlen(e_name)) {\
         _tmp_elem = get_##dd_var(g_var, e_name);\
         if (_tmp_elem) {\
-            SDNS_LOG_WARN("duplicate (%s)", e_name);\
+            SDNS_LOG_WARN("maybe duplicate (%s)", e_name);\
             goto _INNER_LABEL_END;\
         }\
     }\

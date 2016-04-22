@@ -2,6 +2,7 @@
 #include <string.h>
 #include "util_glb.h"
 #include "cfg_glb.h"
+#include "log_glb.h"
 #include "check_main.h"
 #include "option.h"
 
@@ -10,6 +11,7 @@ static GLB_VARS g_glb_vars;
 
 static void setup(void)
 {
+    log_init();
     init_options_type();
 }
 
@@ -277,6 +279,7 @@ Suite * option_suite(void)
     suite_add_tcase(s, tc_core);
 
     tc_core = tcase_create("get_options");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
     tcase_add_test(tc_core, test_get_options_RET_OK);
     tcase_add_test(tc_core, test_get_options_RET_ERR);
     suite_add_tcase(s, tc_core);

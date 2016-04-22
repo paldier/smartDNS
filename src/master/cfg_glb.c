@@ -13,7 +13,7 @@ token_handler get_token_handler(CFG_TYPE *tk_arr, char *token)
     }
 
     while(1) {
-        if (!strcmp(tk_arr[i].name, "")) {
+        if (tk_arr[i].name == NULL) {
             break;
         }
 

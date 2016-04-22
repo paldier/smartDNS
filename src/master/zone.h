@@ -58,11 +58,9 @@
 
 #include <stdint.h>             /* for uint32_t */
 
-#define LABEL_LEN_MAX   63      /* 域名中单个label长度最大值 */
-#define DOMAIN_LEN_MAX  255     /* 域名最大长度 */
-
 enum {
     TYPE_A = 1,
+    TYPE_MAX
 };
 
 enum {
@@ -73,23 +71,28 @@ enum {
  * 对应记录, 目前支持
  *  1) A记录
  */
-typedef struct st_rr {
-    char name[LABEL_LEN_MAX+1]; /* 子域名, magic 1: 结尾\0 */
-    int type;                   /* */
-    int rr_class;               /* */
+typedef struct st_rr_data {
+    int type;                   /* 类型, 如A */
+    int rr_class;               /* 类类型, 如IN */
     int ttl;                    /* 此RR在resolver可缓存的时间 */
     union{
         uint32_t ip4;
-    }rdata[1];                  /* TODO: 暂时支持单条记录 */
+    }data[RR_PER_TYPE_MAX];
+    int cnt;                    /* data[]计数 */
+}RR_DATA;
+typedef struct st_rr {
+    char name[LABEL_LEN_MAX + 1];   /* 子域名, magic 1: 结尾\0 */
+    RR_DATA data[RR_TYPE_MAX +1];   /* 类型->索引, 参考type_to_arr_index[]
+                                        magic 1: 多余的元素代表哨兵*/
 }RR;
 
 /**
  * 域对应的记录信息, 对应.zone文件
  */
 typedef struct st_zone {
-    char name[DOMAIN_LEN_MAX];
-                            /* 权威域名, 以.结尾 */
-    char origin_name[DOMAIN_LEN_MAX];
+    char name[DOMAIN_LEN_MAX + 1];
+                            /* 权威域名, 以.结尾, magic 1代表结尾的0 */
+    char origin_name[DOMAIN_LEN_MAX + 1];
                             /* 对应$ORIGIN, 以.结尾 */
     int ttl;                /* 对应$TTL, 默认TTL */
     
@@ -190,5 +193,17 @@ int parse_rr(void *rr, char *val);
  * @retval: void
  */
 void print_zone_parse_res(ZONE *zone);
+
+/*************以下函数仅用于check单元测试***************/
+/**
+ * 获取解析流程中的名字
+ * @param void
+ * @retval: 字符数组s_rr_name[]首地址
+ *
+ * @NOTE
+ *  1) 仅用于CHECK检测
+ */
+char *get_static_rr_name();
+int get_arr_index_by_type(int type);
 
 #endif

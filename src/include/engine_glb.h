@@ -4,9 +4,24 @@
 /**
  * 定义数据报文格式
  */
+typedef struct st_pkt_info {
+    void *eth_hdr;
+    void *ip_hdr;
+    void *udp_hdr;
+    void *dns_hdr;
+    char *cur_pos;              /* 当前处理位置 */
+
+    char domain[DOMAIN_LEN_MAX + 1];    /* magic 1: 代表结尾的0 */
+    uint16_t q_type;
+    uint16_t q_class;
+
+    union {                     /* 目前仅支持单条RR结果 */
+        uint32_t ip4;
+    }rr_res[RR_PER_TYPE_MAX];
+    int rr_res_cnt;
+}PKT_INFO;
 typedef struct st_pkt {
-    char *info;                 /* 信息区, 可存放报文解析的中间结果 */
-    int info_len;               /* 信息区大小 */
+    PKT_INFO info;              /* 信息区, 存放解析中间结果, PKT_INFO */
     char *data;                 /* 报文正文 */
     int data_len;               /* 报文长度 */
 }PKT;

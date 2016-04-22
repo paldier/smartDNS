@@ -1,12 +1,21 @@
-#include <stdio.h>
 #include "check_main.h"
 #include "util_glb.h"
 #include "cfg_glb.h"
+#include "log_glb.h"
 #include "cfg.h"
 
 /* just for test context, originally defined by main.c */
 static GLB_VARS s_glb_vars;
 
+static void setup(void)
+{
+    log_init();
+}
+
+static void teardown(void)
+{
+    ;           /* do nothing */
+}
 
 START_TEST (test_cfg_parse_RET_OK)
 {
@@ -33,7 +42,7 @@ START_TEST (test_cfg_parse_RET_OK)
 }
 END_TEST
 
-Suite * cfg_suite(void)                                               
+Suite * cfg_suite(void)
 {
     Suite *s;
     TCase *tc_core;
@@ -41,6 +50,7 @@ Suite * cfg_suite(void)
     s = suite_create("master/cfg.c");
 
     tc_core = tcase_create("cfg_parse");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
     tcase_add_test(tc_core, test_cfg_parse_RET_OK);
     suite_add_tcase(s, tc_core);
 

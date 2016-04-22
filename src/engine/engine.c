@@ -5,7 +5,6 @@
 #include "log_glb.h"
 #include "engine.h"
 
-#define DNS_PORT    53
 #define PKT_BUF_LEN 4096
 #define DATA_OFFSET 1024
 
@@ -18,6 +17,11 @@ struct iovec s_iovec;           /* 报文缓存向量 */
 
 int pkt_engine_init()
 {
+    if (sizeof(PKT_INFO) > DATA_OFFSET) {
+        SDNS_LOG_ERR("NO enough room for auxiliary info");
+        return RET_ERR;
+    }
+
     return RET_OK;
 }
 
@@ -117,8 +121,6 @@ int receive_pkt(PKT **pkt)
     tmp_pkt = (PKT *)s_pkt_buf;
     tmp_pkt->data_len = tmp_ret;
     tmp_pkt->data = s_pkt_buf + DATA_OFFSET;
-    tmp_pkt->info_len = DATA_OFFSET;
-    tmp_pkt->info = s_pkt_buf;
 
     if (pkt) {
         *pkt = tmp_pkt;
