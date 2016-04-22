@@ -5,6 +5,7 @@
 #include "pkt_dispose_glb.h"
 #include "dns_glb.h"
 #include "zone_glb.h"
+#include "sort_glb.h"
 #include "log_glb.h"
 #include "worker.h"
 
@@ -43,13 +44,13 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
         return RET_ERR;
     }
 
-#if 0
     /* 排序算法: DRF + GeoIP */
     if (sort_answer(glb_vars, pkt) == RET_ERR) {
         SDNS_LOG_ERR("sort failed");
         return RET_ERR;
     }
 
+#if 0
     /* 组装应答报文 */
     if (cons_pkt(pkt) == RET_ERR) {
         SDNS_LOG_ERR("cons failed");
