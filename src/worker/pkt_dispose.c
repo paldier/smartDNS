@@ -24,12 +24,17 @@ int parse_pkt(PKT *pkt)
         return RET_ERR;
     }
     pkt_info = (PKT_INFO *)&pkt->info;
+
     pkt_info->eth_hdr = pkt->data;
     eth_hdr = pkt_info->eth_hdr;
+
     pkt_info->ip_hdr = (char *)eth_hdr + ETH_HDR_LEN;
     ip4_hdr = pkt_info->ip_hdr;
+    pkt_info->src_ip.ip4 = ip4_hdr->saddr;
+
     pkt_info->udp_hdr = (char *)ip4_hdr + ip4_hdr->ihl * 4; 
     udp_hdr = pkt_info->udp_hdr;
+
     pkt_info->cur_pos = (char *)udp_hdr + UDP_HDR_LEN;
 
     if (pkt->data + pkt->data_len <= pkt_info->cur_pos) {

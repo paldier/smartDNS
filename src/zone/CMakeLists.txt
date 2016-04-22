@@ -2,5 +2,4 @@
 aux_source_directory(.  LIB_SRCS)
 
 #指定生成目标
-add_library(worker ${LIB_SRCS})
-target_link_libraries(master)
+add_library(zone ${LIB_SRCS})

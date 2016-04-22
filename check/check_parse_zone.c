@@ -2,10 +2,12 @@
 #include <arpa/inet.h>
 #include "check_main.h"
 #include "util_glb.h"
+#include "engine_glb.h"
 #include "cfg_glb.h"
+#include "zone_glb.h"
 #include "log_glb.h"
 #include "cfg.h"
-#include "zone.h"
+#include "zone_parse.h"
 
 /* just for test context, originally defined by main.c */
 static GLB_VARS s_glb_vars;

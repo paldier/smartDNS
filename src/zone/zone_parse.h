@@ -1,5 +1,5 @@
-#ifndef ZONE_H
-#define ZONE_H
+#ifndef ZONE_PARSE_H
+#define ZONE_PARSE_H
 
 /**
  * xxx.zone约定:
@@ -90,9 +90,9 @@ typedef struct st_rr {
  * 域对应的记录信息, 对应.zone文件
  */
 typedef struct st_zone {
-    char name[DOMAIN_LEN_MAX + 1];
-                            /* 权威域名, 以.结尾, magic 1代表结尾的0 */
-    char origin_name[DOMAIN_LEN_MAX + 1];
+    char name[DOMAIN_LEN_MAX];
+                            /* 权威域名, 以.结尾 */
+    char origin_name[DOMAIN_LEN_MAX];
                             /* 对应$ORIGIN, 以.结尾 */
     int ttl;                /* 对应$TTL, 默认TTL */
     

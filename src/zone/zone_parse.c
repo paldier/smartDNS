@@ -3,7 +3,7 @@
 #include "util_glb.h"
 #include "log_glb.h"
 #include "cfg_glb.h"
-#include "zone.h"
+#include "zone_parse.h"
 
 /* 用于解析流程, 保存上一次的解析结果, 便于继承 */
 static RR_DATA s_rr_data = {0};

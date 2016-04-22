@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "check_main.h"
+#include "util_glb.h"
 #include "cfg_glb.h"
 #include "log_glb.h"
 

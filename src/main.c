@@ -6,6 +6,7 @@
 #include "engine_glb.h"
 #include "worker_glb.h"
 #include "signal_glb.h"
+#include "zone_glb.h"
 #include "log_glb.h"
 
 GLB_VARS g_glb_vars;

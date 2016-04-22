@@ -1,8 +1,6 @@
 #ifndef CFG_GLB_H 
 #define CFG_GLB_H
 
-#include "util_glb.h"
-
 /**
  * 定义.conf/.zone文件支持的元字符及处理逻辑
  *
@@ -58,21 +56,6 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars);
  */
 void usage_help();
 
-/**
- * 解析域配置信息文件.zone
- * @param glb_vars: [in][out], 全局变量集合
- * @param zone_file: [in], 域配置文件.zone
- * @param zone_name: [in], 域名, example.com(注意它可能不以.结尾)
- * @retval: RET_OK/RET_ERR
- */
-int zone_parse(GLB_VARS *glb_vars);
-int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file);
-/**
- * 释放解析.zone配置文件时分配的内存资源
- * @param glb_vars: [in][out], 全局数据结构集
- * @retval: void
- */
-void release_zone(GLB_VARS *glb_vars);
 
 /**
  * 获取给定字符串中的token字符

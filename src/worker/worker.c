@@ -4,6 +4,7 @@
 #include "signal_glb.h"
 #include "pkt_dispose_glb.h"
 #include "dns_glb.h"
+#include "zone_glb.h"
 #include "log_glb.h"
 #include "worker.h"
 
@@ -26,13 +27,23 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
         return RET_ERR;
     }
 
-#if 0
-    /* 查表 */
-    if (query_dns(glb_vars, pkt) == RET_ERR) {
-        SDNS_LOG_ERR("query failed");
+    if (pass_acl(glb_vars, pkt) == RET_ERR) {
+        char tmp_addr[INET_ADDRSTRLEN];
+
+        SDNS_LOG_ERR("NOT pass ACL, [%s]", 
+                inet_ntop(AF_INET, &(pkt->info.src_ip.ip4),
+                    tmp_addr, INET_ADDRSTRLEN));
         return RET_ERR;
     }
 
+    if (query_zone(glb_vars, pkt) == RET_ERR) {
+        SDNS_LOG_ERR("query zone failed,"
+                " [domain: %s]/[type: %d]/[class: %d]",
+                pkt->info.domain, pkt->info.q_type, pkt->info.q_class);
+        return RET_ERR;
+    }
+
+#if 0
     /* 排序算法: DRF + GeoIP */
     if (sort_answer(glb_vars, pkt) == RET_ERR) {
         SDNS_LOG_ERR("sort failed");

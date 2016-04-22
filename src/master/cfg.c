@@ -1,6 +1,8 @@
 #include <stdbool.h>        /* for true/false */
 #include "util_glb.h"
+#include "engine_glb.h"
 #include "cfg_glb.h"
+#include "zone_glb.h"
 #include "log_glb.h"
 #include "cfg.h"
 

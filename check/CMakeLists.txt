@@ -6,6 +6,7 @@ list(APPEND CHECK_SRCS ${CHECK_FILES})
 include_directories(${CMAKE_SOURCE_DIR}/src/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/master)
 include_directories(${CMAKE_SOURCE_DIR}/src/worker)
+include_directories(${CMAKE_SOURCE_DIR}/src/zone)
 include_directories(${CMAKE_SOURCE_DIR}/src/pcap)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -17,6 +18,7 @@ target_link_libraries(check_smartDNS
     ${CHECK_LIBRARIES} 
     master 
     worker
+    zone
     pcap
     )
 

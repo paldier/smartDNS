@@ -11,7 +11,11 @@ typedef struct st_pkt_info {
     void *dns_hdr;
     char *cur_pos;              /* 当前处理位置 */
 
-    char domain[DOMAIN_LEN_MAX + 1];    /* magic 1: 代表结尾的0 */
+    union{
+        uint32_t ip4;
+    }src_ip;                    /* 源IP, 网络字节序 */
+
+    char domain[DOMAIN_LEN_MAX];
     uint16_t q_type;
     uint16_t q_class;
 

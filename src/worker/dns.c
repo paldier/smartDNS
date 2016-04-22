@@ -102,13 +102,4 @@ int parse_dns(PKT *pkt)
     return RET_OK;
 }
 
-int query_dns(GLB_VARS *glb_vars, PKT *pkt)
-{
-    return RET_ERR;
-}
-
-int sort_answer(GLB_VARS *glb_vars, PKT *pkt)
-{
-    return RET_ERR;
-}
 
