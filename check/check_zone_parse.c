@@ -49,6 +49,7 @@ START_TEST (test_parse_zone_file)
     ck_assert_int_eq(rr_data->type, TYPE_A);
     ck_assert_int_eq(rr_data->rr_class, CLASS_IN);
     ck_assert_int_eq(rr_data->ttl, 86400);
+    ck_assert_int_eq(rr_data->cnt, 1);
     tmp_addr.s_addr = rr_data->data[0].ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.1");
@@ -61,6 +62,7 @@ START_TEST (test_parse_zone_file)
     ck_assert_int_eq(rr_data->type, TYPE_A);
     ck_assert_int_eq(rr_data->rr_class, CLASS_IN);
     ck_assert_int_eq(rr_data->ttl, 86400);
+    ck_assert_int_eq(rr_data->cnt, 1);
     tmp_addr.s_addr = rr_data->data[0].ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "1.2.3.4");
@@ -185,7 +187,7 @@ Suite * zone_suite(void)
     Suite *s;
     TCase *tc_core;
 
-    s = suite_create("master/zone.c");
+    s = suite_create("zone/zone_parse.c");
 
     tc_core = tcase_create("set_glb_default_ttl");
     tcase_add_checked_fixture(tc_core, setup, teardown);

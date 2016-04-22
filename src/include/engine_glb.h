@@ -19,7 +19,7 @@ typedef struct st_pkt_info {
     uint16_t q_type;
     uint16_t q_class;
 
-    union {                     /* 目前仅支持单条RR结果 */
+    union {                     /* A记录, 网络字节序 */
         uint32_t ip4;
     }rr_res[RR_PER_TYPE_MAX];
     int rr_res_cnt;

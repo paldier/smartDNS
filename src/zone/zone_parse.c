@@ -469,6 +469,11 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
             }
             SDNS_MEMCPY(&tmp_rr_data->data[tmp_rr_data->cnt], 
                     &s_rr_data.data[0], sizeof(s_rr_data.data[0]));
+            tmp_rr_data->cnt++;
+            if (tmp_rr_data->cnt > RR_PER_TYPE_MAX) {
+                SDNS_LOG_ERR("too many rr");
+                return RET_ERR;
+            }
         }
     }
 
