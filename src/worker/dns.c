@@ -50,6 +50,47 @@ int get_query_domain(char *beg, int len, char *res)
     return scan_len;
 }
 
+int cons_dns_flag(uint16_t *flags)
+{
+    uint16_t tmp_flags;
+
+    tmp_flags = htons(0x8100);
+    *flags = tmp_flags;
+
+    return RET_OK;
+}
+
+int add_dns_answer(PKT *pkt)
+{
+    PKT_INFO *pkt_info; 
+    char *pos;
+    DNS_AN *rr_ans;
+
+    pkt_info = &pkt->info;
+    pos = pkt_info->cur_pos;
+
+    /* 仅考虑了A记录 */
+    for (int i=0; i<pkt_info->rr_res_cnt; i++) {
+        /* 设置域名: 全压缩 */
+        *(uint16_t *)pos = htons(0xc00c);
+
+        rr_ans = (DNS_AN *)(pos + 2);
+        rr_ans->type = htons(pkt_info->q_type);
+        rr_ans->rr_class = htons(pkt_info->q_class);
+        rr_ans->ttl = htonl(pkt_info->rr_res_ttl);
+        rr_ans->data_len = htons(4);    /* magic 4: A记录长度 */
+        SDNS_MEMCPY(rr_ans->data, &pkt_info->rr_res[i].ip4, rr_ans->data_len);
+
+        /* magic 2: 域名长;*/
+        pos += 2 + sizeof(DNS_AN) + ntohs(rr_ans->data_len);
+    }
+
+    /* 设置当前位置 */
+    pkt_info->cur_pos = pos;
+
+    return RET_OK;
+}
+
 int parse_dns(PKT *pkt)
 {
     PKT_INFO *pkt_info; 
@@ -102,4 +143,28 @@ int parse_dns(PKT *pkt)
     return RET_OK;
 }
 
+int cons_dns(PKT *pkt)
+{
+    /**
+     * 调用此函数时, PKT_INFO->cur_pos与调用parse_dns()后一致;
+     * 指向查询域后(Queries)的第一个字节, 即应答域(Answers)
+     */
+
+    /* 变更报文标识: 应答, 不支持递归 */
+    if (cons_dns_flag(&(((DNS_HDR *)pkt->info.dns_hdr)->flags))
+            == RET_ERR) {
+        SDNS_LOG_ERR("set flag failed");
+        return RET_ERR;
+    }
+
+    /* 查询部分不变 */
+    /* 域名列表压缩: 当前Answer部分仅支持A记录, 因此全压缩 */
+    /* 添加查询结果: 域名全压缩 */
+    if (add_dns_answer(pkt) == RET_ERR) {
+        SDNS_LOG_ERR("add answer failed");
+        return RET_ERR;
+    }
+
+    return RET_OK;
+}
 

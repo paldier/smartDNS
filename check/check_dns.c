@@ -1,8 +1,11 @@
 #include "check_main.h"
 #include "util_glb.h"
 #include "engine_glb.h"
+#include "pkt_dispose_glb.h"
 #include "dns_glb.h"
 #include "log_glb.h"
+#include "pcap_read.h"
+#include "zone.h"
 #include "dns.h"
 
 static void setup(void)
@@ -118,6 +121,99 @@ START_TEST (test_get_query_domain)
 }
 END_TEST
 
+START_TEST (test_cons_dns_flag)
+{
+    uint16_t tmp_flags;
+    int tmp_ret;
+
+    tmp_ret = cons_dns_flag(&tmp_flags);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(tmp_flags, htons(0x8100));
+}
+END_TEST
+
+START_TEST (test_add_dns_answer)
+{
+#define PKT_BUF_LEN 4096
+#define DATA_OFFSET 1024
+    char buf[PKT_BUF_LEN];
+    FILE *fp;
+    PKT *tmp_pkt;
+    PKT_INFO *tmp_pkt_info;
+    char *tmp_pos;
+    int tmp_ret;
+
+    /* 准备阶段, 设置PKT_INFO */
+    /* A_a.a.com.pcap:  src: 172.16.2.2/55958
+     *                  dst: 172.16.103.2/53
+     *                  type: A 
+     *                  domain name: a.a.com
+     *                  transaction ID: 0x40f8*/
+    fp = pcap_open("../../check/A_a.a.com.pcap");
+    ck_assert_int_ne(fp, NULL);
+
+    tmp_ret = pcap_read_one_pkt(fp, buf + DATA_OFFSET, 
+            PKT_BUF_LEN - DATA_OFFSET);
+    ck_assert_int_eq(tmp_ret, 67);
+
+    tmp_pkt = (PKT *)buf;
+    tmp_pkt->data_len = tmp_ret;
+    tmp_pkt->data = buf + DATA_OFFSET;
+    tmp_ret = parse_pkt(tmp_pkt);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+
+    tmp_pkt_info = &tmp_pkt->info;
+    snprintf(tmp_pkt_info->domain, sizeof(tmp_pkt_info->domain),
+            "%s", "a.a.com.");
+    tmp_pkt_info->q_type = TYPE_A;
+    tmp_pkt_info->q_class = CLASS_IN;
+    tmp_pkt_info->rr_res_cnt = 1;
+    tmp_pkt_info->rr_res_ttl = 86400;
+    for (int i=0; i<RR_PER_TYPE_MAX; i++) {
+        struct in_addr addr;
+        char ip_val[64];
+
+        snprintf(ip_val, sizeof(ip_val), "%s%d", "192.168.0.", i + 1);
+        (void)inet_pton(AF_INET, ip_val, (void *)&addr);
+        tmp_pkt_info->rr_res[i].ip4 = addr.s_addr;
+    }
+
+    tmp_pos = tmp_pkt_info->cur_pos;
+
+    /* 验证 */
+    tmp_ret = add_dns_answer(tmp_pkt);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+
+    for (int i=0; i<RR_PER_TYPE_MAX; i++) {
+        ck_assert_int_eq((*(uint8_t *)tmp_pos - 0xc0), 0);     /* 压缩地址 */
+        ck_assert_int_eq(ntohs(*(uint16_t *)tmp_pos) - 0xc000, sizeof(DNS_HDR));
+        tmp_pos += 2;
+
+        ck_assert_int_eq(ntohs(*(uint16_t *)tmp_pos), TYPE_A);
+        tmp_pos += 2;
+
+        ck_assert_int_eq(ntohs(*(uint16_t *)tmp_pos), CLASS_IN);
+        tmp_pos += 2;
+
+        ck_assert_int_eq(*(uint32_t *)tmp_pos, htonl(86400));
+        tmp_pos += 4;
+
+        ck_assert_int_eq(ntohs(*(uint16_t *)tmp_pos), 4);
+        tmp_pos += 2;
+
+        struct in_addr addr;
+        char ip_val[64];
+
+        snprintf(ip_val, sizeof(ip_val), "%s%d", "192.168.0.", i + 1);
+        (void)inet_pton(AF_INET, ip_val, (void *)&addr);
+        ck_assert_int_eq((*(uint32_t *)tmp_pos) - addr.s_addr, 0);
+        tmp_pos += 4;
+    }
+
+    ck_assert_int_eq(tmp_pkt_info->cur_pos, tmp_pos);
+}
+END_TEST
+
 Suite * dns_suite(void)
 {
     Suite *s;
@@ -128,6 +224,16 @@ Suite * dns_suite(void)
     tc_core = tcase_create("get_query_domain");
     tcase_add_checked_fixture(tc_core, setup, teardown);
     tcase_add_test(tc_core, test_get_query_domain);
+    suite_add_tcase(s, tc_core);
+
+    tc_core = tcase_create("cons_dns_flag");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
+    tcase_add_test(tc_core, test_cons_dns_flag);
+    suite_add_tcase(s, tc_core);
+
+    tc_core = tcase_create("add_dns_answer");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
+    tcase_add_test(tc_core, test_add_dns_answer);
     suite_add_tcase(s, tc_core);
 
     return s;

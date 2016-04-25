@@ -57,6 +57,7 @@ int query_zone(GLB_VARS *glb_vars, PKT *pkt)
     rr_data = &rr->data[get_arr_index_by_type(pkt_info->q_type)];
 
     pkt_info->rr_res_cnt = rr_data->cnt;
+    pkt_info->rr_res_ttl = rr_data->ttl;
     SDNS_MEMCPY(pkt_info->rr_res, rr_data->data,
             sizeof(pkt_info->rr_res[0]) * pkt_info->rr_res_cnt);
 

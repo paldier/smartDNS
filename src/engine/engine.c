@@ -33,21 +33,21 @@ int pkt_engine_init_2()
 
     s_sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (s_sock_fd == -1) {
-        SDNS_LOG_DEBUG("create socket fd failed, [%s]", strerror(errno));
+        SDNS_LOG_ERR("create socket fd failed, [%s]", strerror(errno));
         return RET_ERR;
     }
     if (setsockopt(s_sock_fd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, 
                 sizeof(int)) == -1) {
-        SDNS_LOG_DEBUG("set reuse addr failed, [%s]", strerror(errno));
+        SDNS_LOG_ERR("set reuse addr failed, [%s]", strerror(errno));
         return RET_ERR;
     }
     SDNS_MEMSET(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(DNS_PORT);
+    serv_addr.sin_port = DNS_PORT;
     if (bind(s_sock_fd, (struct sockaddr *)&serv_addr, 
                 sizeof(serv_addr)) == -1) {
-        SDNS_LOG_DEBUG("bind socket failed, [%s]", strerror(errno));
+        SDNS_LOG_ERR("bind socket failed, [%s]", strerror(errno));
         return RET_ERR;
     }
 

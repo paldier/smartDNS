@@ -50,13 +50,11 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
         return RET_ERR;
     }
 
-#if 0
     /* 组装应答报文 */
     if (cons_pkt(pkt) == RET_ERR) {
         SDNS_LOG_ERR("cons failed");
         return RET_ERR;
     }
-#endif
 
     return RET_OK;
 }
@@ -85,7 +83,7 @@ void start_worker(GLB_VARS *glb_vars)
 
     /* 引擎第二阶段初始化 */
     if (pkt_engine_init_2() == RET_ERR) {
-        SDNS_LOG_DEBUG("In worker[%d], engine init failed", getpid());
+        SDNS_LOG_ERR("In worker[%d], engine init failed", getpid());
         return;
     }
 
@@ -94,7 +92,7 @@ void start_worker(GLB_VARS *glb_vars)
 
     /* 去除信号屏蔽 */
     if (clear_mask_signal() == RET_ERR) {
-        SDNS_LOG_DEBUG("In worker[%d], clear signal mask failed", getpid());
+        SDNS_LOG_ERR("In worker[%d], clear signal mask failed", getpid());
         return;
     }
 

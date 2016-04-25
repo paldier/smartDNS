@@ -22,6 +22,7 @@ typedef struct st_pkt_info {
     union {                     /* A记录, 网络字节序 */
         uint32_t ip4;
     }rr_res[RR_PER_TYPE_MAX];
+    uint32_t rr_res_ttl;
     int rr_res_cnt;
 }PKT_INFO;
 typedef struct st_pkt {

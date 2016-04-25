@@ -55,4 +55,27 @@ typedef struct st_answer {
  */
 int get_query_domain(char *beg, int len, char *res);
 
+/**
+ * 请求报文==>应答报文, 构造应答flags
+ * @param pkt: [in][out], 待处理报文
+ * @retval: RET_OK/RET_ERR
+ *
+ * @NOTE
+ *  1) 请求 --> 应答
+ *  2) 不支持递归
+ *  3) flags返回结果为网络字节序
+ */
+int cons_dns_flag(uint16_t *flags);
+
+/**
+ * 请求报文==>应答报文, 添加查询结果
+ * @param pkt: [in][out], 待处理报文
+ * @retval: RET_OK/RET_ERR
+ *
+ * @NOTE
+ *  1) 仅支持A记录
+ *  2) 更新PKT_INFO->cur_pos
+ */
+int add_dns_answer(PKT *pkt);
+
 #endif
