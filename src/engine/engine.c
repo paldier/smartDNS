@@ -23,11 +23,6 @@ int pkt_engine_init()
         return RET_ERR;
     }
 
-    return RET_OK;
-}
-
-int pkt_engine_init_2()
-{
     /* 建立UDP监听插口 */
     struct sockaddr_in serv_addr;
     int reuse_addr = 1;
@@ -52,6 +47,11 @@ int pkt_engine_init_2()
         return RET_ERR;
     }
 
+    return RET_OK;
+}
+
+int pkt_engine_init_2()
+{
     return RET_OK;
 }
 

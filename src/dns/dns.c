@@ -140,6 +140,8 @@ int parse_dns(PKT *pkt)
     pkt_info->q_class = ntohs(dns_q->rr_class);
     pkt_info->cur_pos += sizeof(DNS_QUERY);
 
+    /* <TAKE CARE!!!>当前代码不处理"additional records", 应答报文将
+     * 覆盖此部分数据 */
     if (pkt->data + pkt->data_len > pkt_info->cur_pos) {
         SDNS_LOG_DEBUG("have additional info");
     }

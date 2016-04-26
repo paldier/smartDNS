@@ -29,7 +29,7 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
     if (pass_acl(glb_vars, pkt) == RET_ERR) {
         char tmp_addr[INET_ADDRSTRLEN];
 
-        SDNS_LOG_ERR("NOT pass ACL, [%s]", 
+        SDNS_LOG_WARN("NOT pass ACL, [%s]", 
                 inet_ntop(AF_INET, &(pkt->info.src_ip.ip4),
                     tmp_addr, INET_ADDRSTRLEN));
         return RET_ERR;
@@ -37,7 +37,7 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
 
     /* 查询RR记录 */
     if (query_zone(glb_vars, pkt) == RET_ERR) {
-        SDNS_LOG_ERR("query zone failed,"
+        SDNS_LOG_WARN("query zone failed,"
                 " [domain: %s]/[type: %d]/[class: %d]",
                 pkt->info.domain, pkt->info.q_type, pkt->info.q_class);
         return RET_ERR;
