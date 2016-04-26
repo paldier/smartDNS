@@ -6,15 +6,12 @@
 
 int get_query_domain(char *beg, int len, char *res)
 {
+    assert(res);
+    assert(beg);
+    assert(len > 0);
+
     int label_len;
     int scan_len = 0;
-
-    if (res == NULL
-            || beg == NULL
-            || len < 1) {
-        SDNS_LOG_ERR("param err, [%d]", len);
-        return RET_ERR;
-    }
 
     while (scan_len < len) {
         label_len = beg[scan_len];
@@ -52,6 +49,8 @@ int get_query_domain(char *beg, int len, char *res)
 
 int cons_dns_flag(uint16_t *flags)
 {
+    assert(flags);
+
     uint16_t tmp_flags;
 
     tmp_flags = htons(0x8100);
@@ -62,6 +61,8 @@ int cons_dns_flag(uint16_t *flags)
 
 int add_dns_answer(PKT *pkt)
 {
+    assert(pkt);
+
     PKT_INFO *pkt_info; 
     char *pos;
     DNS_AN *rr_ans;
@@ -95,6 +96,8 @@ int add_dns_answer(PKT *pkt)
 
 int parse_dns(PKT *pkt)
 {
+    assert(pkt);
+
     PKT_INFO *pkt_info; 
     DNS_HDR *dns_hdr;
     DNS_QUERY *dns_q;
@@ -146,6 +149,7 @@ int parse_dns(PKT *pkt)
 
 int cons_dns(PKT *pkt)
 {
+    assert(pkt);
     /**
      * 调用此函数时, PKT_INFO->cur_pos与调用parse_dns()后一致;
      * 指向查询域后(Queries)的第一个字节, 即应答域(Answers)

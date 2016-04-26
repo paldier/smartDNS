@@ -26,7 +26,7 @@ START_TEST (test_get_query_domain)
     SDNS_MEMSET(domain, 0, sizeof(domain));
     tmp_ret = get_query_domain(domain, sizeof(domain), res);
     ck_assert_int_eq(tmp_ret, 1);
-    //ck_assert_str_eq(res, ".");
+    ck_assert_str_eq(res, ".");
 
     /* \3com\0 */
     SDNS_MEMSET(domain, 0, sizeof(domain));

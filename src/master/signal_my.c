@@ -41,6 +41,8 @@ void smartDNS_signal_handler(int signo)
 
 int process_SIGCHLD(GLB_VARS *glb_vars)
 {
+    assert(glb_vars);
+
     int  status;
     pid_t child_pid;
 
@@ -154,6 +156,8 @@ int wait_required_signal()
 
 int process_signals(GLB_VARS *glb_vars)
 {
+    assert(glb_vars);
+
     struct st_signal  *sig;
 
     for (sig = SIGNALS_ARR; sig->signo != 0; sig++) {

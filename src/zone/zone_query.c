@@ -7,10 +7,13 @@
 
 ZONE *get_au_zone(GLB_VARS *glb_vars, char *domain)
 {
+    assert(glb_vars);
+    assert(domain);
+
     char *au_domain = domain;
     ZONE *zone = NULL;
 
-     while(au_domain) {
+    while(au_domain) {
         zone = get_zone(glb_vars, au_domain);
         if (zone) {
             break;
@@ -29,12 +32,18 @@ ZONE *get_au_zone(GLB_VARS *glb_vars, char *domain)
 
 int pass_acl(GLB_VARS *glb_vars, PKT *pkt)
 {
+    assert(glb_vars);
+    assert(pkt);
+
     /* 暂时空置 */
     return RET_OK;
 }
 
 int query_zone(GLB_VARS *glb_vars, PKT *pkt)
 {
+    assert(glb_vars);
+    assert(pkt);
+
     char sub_domain[LABEL_LEN_MAX + 1];
     char *au_domain;
     PKT_INFO *pkt_info = &pkt->info;

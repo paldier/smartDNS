@@ -142,7 +142,7 @@ void print_cfg_parse_res(GLB_VARS *glb_vars)
     for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
         zone_cfg = cfg_info->zone_cfg[i];
         if (zone_cfg == NULL) {
-            SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");
+            SDNS_LOG_WARN("can't be happen, DEBUG IT!!!");
             continue;
         }
 

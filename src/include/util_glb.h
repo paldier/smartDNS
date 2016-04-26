@@ -10,6 +10,10 @@
 #include <stdint.h>         /* for uint32_t/.. */ 
 #include <arpa/inet.h>      /* for htons/inet_pton()/.. */
 #include <stdbool.h>        /* for true/false */
+#ifndef DNS_DEBUG
+#define NDEBUG
+#endif
+#include <assert.h>         /* for assert() */
 
 /* 定义返回值 */
 #define RET_OK      0

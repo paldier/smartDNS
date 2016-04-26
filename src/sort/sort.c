@@ -7,6 +7,9 @@
 
 int sort_answer(GLB_VARS *glb_vars, PKT *pkt)
 {
+    assert(glb_vars);
+    assert(pkt);
+
     PKT_INFO *pkt_info = &pkt->info;
 
     if (pkt_info->rr_res_cnt == 0) {

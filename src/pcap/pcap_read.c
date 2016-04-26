@@ -5,6 +5,8 @@
 
 int pcap_close(FILE *fp)
 {
+    assert(fp);
+
     /* 忽略错误 */
     (void)fclose(fp);
 

@@ -108,6 +108,9 @@ int get_arr_index_by_type(int type)
 /* 利用宏定义, 定义函数 */
 ZONE *get_zone(GLB_VARS *glb_vars, char *au_domain) 
 {
+    assert(glb_vars);
+    assert(au_domain);
+
     ZONES *zones;
 
     zones = (ZONES *)glb_vars->zones;
@@ -117,11 +120,17 @@ ZONE *get_zone(GLB_VARS *glb_vars, char *au_domain)
 
 RR *get_rr(ZONE *zone, const char *sub_domain)
 {
+    assert(zone);
+    assert(sub_domain);
+
     return GET_DDARR_ELEM_BYNAME(zone, rr, RR, sub_domain);
 }
 
 int set_glb_default_ttl(void *zone, char *val)
 {
+    assert(zone);
+    assert(val);
+
     /* val值示例: "\t 86400 ;24 hours could have been written as 24h or 1d" */
     ZONE *tmp_zone;
     char token[TOKEN_NAME_LEN_MAX];
@@ -153,6 +162,9 @@ int set_glb_default_ttl(void *zone, char *val)
 
 int set_glb_au_domain_suffix(void *zone, char *val)
 {
+    assert(zone);
+    assert(val);
+
     /* val值示例: " example.com.*/
     ZONE *tmp_zone;
     char token[TOKEN_NAME_LEN_MAX];
@@ -185,6 +197,9 @@ int set_glb_au_domain_suffix(void *zone, char *val)
 
 int set_rr_name(void *rr, char *val)
 {
+    assert(rr);
+    assert(val);
+
     snprintf(s_rr_name, sizeof(s_rr_name), "%s", val);
 
     return RET_OK;
@@ -192,6 +207,9 @@ int set_rr_name(void *rr, char *val)
 
 int set_rr_ttl(void *rr, char *val)
 {
+    assert(rr);
+    assert(val);
+
     RR_DATA *tmp_rr_data = (RR_DATA *)rr;
 
     tmp_rr_data->ttl = atoi(val);
@@ -201,6 +219,9 @@ int set_rr_ttl(void *rr, char *val)
 
 int set_rr_rdata(void *rr, char *val)
 {
+    assert(rr);
+    assert(val);
+
     RR_DATA *tmp_rr_data = (RR_DATA *)rr;
     struct in_addr addr;
     int tmp_ret;
@@ -228,6 +249,9 @@ int set_rr_rdata(void *rr, char *val)
 
 int set_rr_type_A(void *rr, char *val)
 {
+    assert(rr);
+    assert(val);
+
     RR_DATA *tmp_rr_data = (RR_DATA *)rr;
 
     tmp_rr_data->type = TYPE_A;
@@ -237,6 +261,9 @@ int set_rr_type_A(void *rr, char *val)
 
 int set_rr_class_IN(void *rr, char *val)
 {
+    assert(rr);
+    assert(val);
+
     RR_DATA *tmp_rr_data = (RR_DATA *)rr;;
 
     tmp_rr_data->rr_class = CLASS_IN;
@@ -246,6 +273,8 @@ int set_rr_class_IN(void *rr, char *val)
 
 int is_digit(char *val)
 {
+    assert(val);
+
     int yes_or_no = 1;
 
     for (int i=0; i<strlen(val); i++) {
@@ -260,6 +289,8 @@ int is_digit(char *val)
 
 int parse_rr(void *rr, char *val)
 {
+    assert(rr);
+    assert(val);
     /** 
      * 几乎所有的RR都包含元素: NAME CLASS TYPE TTL RDATA,
      * 但顺序不可能不一致
@@ -345,6 +376,9 @@ int parse_rr(void *rr, char *val)
 
 ZONE *create_zone(GLB_VARS *glb_vars, char *zone_name)
 {
+    assert(glb_vars);
+    assert(zone_name);
+
     ZONES *tmp_zones;
 
     /* 是否第一次分配? */
@@ -366,6 +400,9 @@ ZONE *create_zone(GLB_VARS *glb_vars, char *zone_name)
 
 RR *create_rr(ZONE *zone, char *rr_name)
 {
+    assert(zone);
+    assert(rr_name);
+
     return CREATE_DDARR_ELEM_BYNAME(zone, zone, rr, RR, rr_name);
 }
 
@@ -538,6 +575,8 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
 
 void release_zone(GLB_VARS *glb_vars)
 {
+    assert(glb_vars);
+
     ZONES *tmp_zones;
     ZONE *tmp_zone;
 

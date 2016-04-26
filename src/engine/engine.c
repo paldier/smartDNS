@@ -64,6 +64,7 @@ int start_pkt_engine()
 
 int receive_pkt(PKT **pkt)
 {
+    assert(pkt);
 #if 0
     重要的数据结构注解
 
@@ -133,17 +134,15 @@ int receive_pkt(PKT **pkt)
     /* 设置后续处理点 */
     tmp_pkt->info.cur_pos = tmp_pkt->data;
 
-    if (pkt) {
-        *pkt = tmp_pkt;
-    } else {
-        SDNS_LOG_WARN("return pointer NULL");
-    }
+    *pkt = tmp_pkt;
 
     return RET_OK;
 }
 
 int send_pkt(PKT *pkt)
 {
+    assert(pkt);
+
     /* 更新PKT信息 */
     /* 发送 */
     s_msg.msg_iov[0].iov_len = pkt->data_len;

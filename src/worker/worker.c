@@ -16,10 +16,8 @@ void start_other_worker(GLB_VARS *glb_vars)
 
 int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
 {
-    if (pkt == NULL || glb_vars == NULL) {
-        SDNS_LOG_ERR("param err");
-        return RET_ERR;
-    }
+    assert(glb_vars);
+    assert(pkt);
 
     /* 解析DNS报文 */
     if (parse_dns(pkt) == RET_ERR) {

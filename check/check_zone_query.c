@@ -76,9 +76,6 @@ START_TEST (test_get_au_zone)
 
     zone = get_au_zone(&s_glb_vars, "com.");
     ck_assert_int_eq(zone, NULL);
-
-    zone = get_au_zone(&s_glb_vars, NULL);
-    ck_assert_int_eq(zone, NULL);
 }
 END_TEST
 

@@ -5,6 +5,8 @@
 
 void update_eth_hdr(PKT *pkt)
 {
+    assert(pkt);
+
     PKT_INFO *pkt_info; 
     ETH_HDR *eth_hdr;
 
@@ -22,6 +24,8 @@ void update_eth_hdr(PKT *pkt)
 
 void update_ip_hdr(PKT *pkt)
 {
+    assert(pkt);
+
     PKT_INFO *pkt_info; 
     IP4_HDR *ip4_hdr;
 
@@ -68,6 +72,9 @@ void update_ip_hdr(PKT *pkt)
 
 uint16_t cal_chksum_udp(PSEUDO_HDR *pseudo_hdr, UDP_HDR *udp_hdr)
 {
+    assert(pseudo_hdr);
+    assert(udp_hdr);
+
     uint16_t *h;
     uint16_t *d;
     uint16_t dlen;
@@ -143,6 +150,8 @@ uint16_t cal_chksum_udp(PSEUDO_HDR *pseudo_hdr, UDP_HDR *udp_hdr)
 
 void update_udp_hdr(PKT *pkt)
 {
+    assert(pkt);
+
     PKT_INFO *pkt_info; 
     IP4_HDR *ip4_hdr;
     UDP_HDR *udp_hdr;
@@ -171,15 +180,14 @@ void update_udp_hdr(PKT *pkt)
 
 int parse_pkt(PKT *pkt)
 {
+    assert(pkt);
+
     PKT_INFO *pkt_info; 
     ETH_HDR *eth_hdr;
     IP4_HDR *ip4_hdr;
     UDP_HDR *udp_hdr;
 
-    if (pkt == NULL) {
-        SDNS_LOG_ERR("pkt NULL");
-        return RET_ERR;
-    }
+    assert(pkt);
 
     /* L2-L4 层解码及必要检测 */
     if (pkt->data_len < ETH_HDR_LEN + IP_HDR_SIZE + UDP_HDR_LEN) { 
@@ -221,6 +229,8 @@ int parse_pkt(PKT *pkt)
 
 int cons_pkt(PKT *pkt)
 {
+    assert(pkt);
+
     /* 更新PKT/PKT_INFO信息 */
 
     /* 更新UDP包头, 并计算校验和 */
@@ -257,6 +267,8 @@ int start_pkt_engine()
 
 int send_pkt(PKT *pkt)
 {
+    assert(pkt);
+
     /* 向DPDK发送报文 */
     return RET_OK;
 }
@@ -264,6 +276,8 @@ int send_pkt(PKT *pkt)
 
 int receive_pkt(PKT **pkt)
 {
+    assert(pkt);
+
     /* 从DPDK收取报文, 并初始化PKT/PKT_INFO结构 */
     return RET_OK;
 }
