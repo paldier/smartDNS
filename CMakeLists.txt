@@ -19,10 +19,10 @@ ADD_DEFINITIONS(-Wunused)
 ADD_DEFINITIONS(-std=gnu99)
 
 #指定Debug编译模式("$ cmake -DCMAKE_BUILD_TYPE=Debug ..")
-set(CMAKE_BUILD_TYPE Debug)         #开发期间, 默认Debug模式
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Setting build type to 'Release' as none was specified.")
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Debug)         #开发期间默认为Debug模式
+    #set(CMAKE_BUILD_TYPE Release)      #产品最终未Release模式
 endif() 
 set(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} -O0 -g -ggdb -DDNS_DEBUG")
 set(CMAKE_C_FLAGS_RELEASE "$ENV{CFLAGS} -O3")
