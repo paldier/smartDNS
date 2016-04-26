@@ -1,4 +1,3 @@
-#include <stdbool.h>        /* for true/false */
 #include "util_glb.h"
 #include "engine_glb.h"
 #include "cfg_glb.h"
@@ -129,6 +128,34 @@ int save_zone_info_file(void *glb_vars, char *val)
     return RET_OK;
 }
 
+void print_cfg_parse_res(GLB_VARS *glb_vars)
+{
+    CFG_INFO *cfg_info;
+    ZONE_CFG_INFO *zone_cfg;
+
+    cfg_info = (CFG_INFO *)glb_vars->conf;
+    if (cfg_info == NULL) {
+        return;
+    }
+
+    /* 打印域控制信息 */
+    for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
+        zone_cfg = cfg_info->zone_cfg[i];
+        if (zone_cfg == NULL) {
+            SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");
+            continue;
+        }
+
+        printf("\n");
+        printf("zone \"%s\" {\n", zone_cfg->name);
+        printf("\ttype %s;\n", (zone_cfg->dev_type == 1) ? "master" : "slave");
+        printf("\tfile \"%s\";\n", zone_cfg->file);
+        printf("};\n");
+    }
+}
+
+/***********************GLB FUNC*************************/
+
 int cfg_parse(GLB_VARS *glb_vars)
 {
     FILE *fd;
@@ -209,6 +236,27 @@ int cfg_parse(GLB_VARS *glb_vars)
     return RET_OK;
 }
 
+void release_cfg(GLB_VARS *glb_vars)
+{
+    CFG_INFO *cfg_info;
+    ZONE_CFG_INFO *zone_cfg;
+
+    cfg_info = (CFG_INFO *)glb_vars->conf;
+    if (cfg_info == NULL) {
+        return;
+    }
+
+    /* 释放域控制信息结构体ZONE_CFG_INFO */
+    for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
+        zone_cfg = cfg_info->zone_cfg[i];
+        SDNS_FREE((void *)zone_cfg);
+    }
+    /* 释放存放域控制信息结构的指针数组 */
+    SDNS_FREE((void *)cfg_info->zone_cfg);
+
+    /* 释放其他动态内存 */
+}
+
 int zone_parse(GLB_VARS *glb_vars)
 {
     CFG_INFO *cfg_info;
@@ -235,50 +283,4 @@ int zone_parse(GLB_VARS *glb_vars)
     return RET_OK;
 }
 
-void release_conf(GLB_VARS *glb_vars)
-{
-    CFG_INFO *cfg_info;
-    ZONE_CFG_INFO *zone_cfg;
-
-    cfg_info = (CFG_INFO *)glb_vars->conf;
-    if (cfg_info == NULL) {
-        return;
-    }
-
-    /* 释放域控制信息结构体ZONE_CFG_INFO */
-    for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
-        zone_cfg = cfg_info->zone_cfg[i];
-        SDNS_FREE((void *)zone_cfg);
-    }
-    /* 释放存放域控制信息结构的指针数组 */
-    SDNS_FREE((void *)cfg_info->zone_cfg);
-
-    /* 释放其他动态内存 */
-}
-
-void print_cfg_parse_res(GLB_VARS *glb_vars)
-{
-    CFG_INFO *cfg_info;
-    ZONE_CFG_INFO *zone_cfg;
-
-    cfg_info = (CFG_INFO *)glb_vars->conf;
-    if (cfg_info == NULL) {
-        return;
-    }
-
-    /* 打印域控制信息 */
-    for (int i=0; i<cfg_info->zone_cfg_cnt; i++) {
-        zone_cfg = cfg_info->zone_cfg[i];
-        if (zone_cfg == NULL) {
-            SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");
-            continue;
-        }
-
-        printf("\n");
-        printf("zone \"%s\" {\n", zone_cfg->name);
-        printf("\ttype %s;\n", (zone_cfg->dev_type == 1) ? "master" : "slave");
-        printf("\tfile \"%s\";\n", zone_cfg->file);
-        printf("};\n");
-    }
-}
 

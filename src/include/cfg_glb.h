@@ -14,6 +14,7 @@ typedef struct st_cfg_token {
     const char *name;               /* 元数据类型名 */
     token_handler dispose;          /* 处理句柄 */
 }CFG_TYPE;
+
 /**
  * 获取token对应的处理函数
  * @param tk_arr: [in], 待搜索的token数组
@@ -34,7 +35,7 @@ int cfg_parse(GLB_VARS *glb_vars);
  * @param glb_vars: [in][out], 全局数据结构集
  * @retval: void
  */
-void release_conf(GLB_VARS *glb_vars);
+void release_cfg(GLB_VARS *glb_vars);
 
 /**
  * 解析命令行

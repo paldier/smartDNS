@@ -3,22 +3,37 @@
 
 /**
  * 定义数据报文格式
+ *
+ * 注意, 不同的引擎可能包含不同的值
+ *  1) 普通引擎
+ *      不关注PKT_INFO->eth_hdr/ip_hdr/udp_hdr
+ *      PKT->data/data_len对应DNS数据
+ *
+ *  2) DPDK引擎
+ *      关注PKT_INFO->eth_hdr/ip_hdr/udp_hdr
+ *      PKT->data/data_len对应L2-L4 + DNS数据
  */
 typedef struct st_pkt_info {
+    /* 底层引擎关注的字段 */
     void *eth_hdr;
     void *ip_hdr;
     void *udp_hdr;
+
+    /* 高层包处理 */
     void *dns_hdr;
     char *cur_pos;              /* 当前处理位置 */
 
+    /* acl规则 */
     union{
         uint32_t ip4;
     }src_ip;                    /* 源IP, 网络字节序 */
 
+    /* 查询条件 */
     char domain[DOMAIN_LEN_MAX];
     uint16_t q_type;
     uint16_t q_class;
 
+    /* 记录结果 */
     union {                     /* A记录, 网络字节序 */
         uint32_t ip4;
     }rr_res[RR_PER_TYPE_MAX];

@@ -3,4 +3,3 @@ aux_source_directory(.  LIB_SRCS)
 
 #指定生成目标
 add_library(master ${LIB_SRCS})
-target_link_libraries(master log)

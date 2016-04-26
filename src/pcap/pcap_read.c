@@ -1,6 +1,6 @@
 #include "util_glb.h"
-#include "log_glb.h"
 #include "pcap_glb.h"
+#include "log_glb.h"
 #include "pcap_read.h"
 
 int pcap_close(FILE *fp)

@@ -9,6 +9,7 @@
 #include <stdio.h>          /* for fopen/printf() */
 #include <stdint.h>         /* for uint32_t/.. */ 
 #include <arpa/inet.h>      /* for htons/inet_pton()/.. */
+#include <stdbool.h>        /* for true/false */
 
 /* 定义返回值 */
 #define RET_OK      0

@@ -2,4 +2,4 @@
 aux_source_directory(.  LIB_SRCS)
 
 #指定生成目标
-add_library(worker ${LIB_SRCS})
+add_library(dns ${LIB_SRCS})

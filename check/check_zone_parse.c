@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <arpa/inet.h>
 #include "check_main.h"
 #include "util_glb.h"
 #include "engine_glb.h"

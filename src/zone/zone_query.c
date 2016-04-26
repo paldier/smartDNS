@@ -25,6 +25,8 @@ ZONE *get_au_zone(GLB_VARS *glb_vars, char *domain)
     return zone;
 }
 
+/***********************GLB FUNC*************************/
+
 int pass_acl(GLB_VARS *glb_vars, PKT *pkt)
 {
     /* 暂时空置 */

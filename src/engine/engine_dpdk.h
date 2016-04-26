@@ -1,7 +1,5 @@
-#ifndef PKT_DISPOSE_H
-#define PKT_DISPOSE_H
-
-#include <arpa/inet.h>      /* for ntohs() */
+#ifndef ENGINE_DPDK_H
+#define ENGINE_DPDK_H
 
 #define ETH_ADDR_LEN        6
 #define ETH_TYPE_IPV4       ntohs(0x0800)
@@ -90,5 +88,19 @@ void update_ip_hdr(PKT *pkt);
  *  1) 倒换smac和dmac
  */
 void update_eth_hdr(PKT *pkt);
+
+/**
+ * 解析从DPDK收取的报文, L2-L4, 结果存放在PKT->info
+ * @param pkt: [in][out], 待处理的报文
+ * @retval: RET_OK/RET_ERR
+ */
+int parse_pkt(PKT *pkt);
+
+/**
+ * 构造应答报文, L2-L4
+ * @param pkt: [in][out], 待处理的报文
+ * @retval: RET_OK/RET_ERR
+ */
+int cons_pkt(PKT *pkt);
 
 #endif

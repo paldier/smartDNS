@@ -1,10 +1,8 @@
 #include "check_main.h"
 #include "util_glb.h"
 #include "engine_glb.h"
-#include "pkt_dispose_glb.h"
 #include "dns_glb.h"
 #include "log_glb.h"
-#include "pcap_read.h"
 #include "zone.h"
 #include "dns.h"
 
@@ -137,30 +135,15 @@ START_TEST (test_add_dns_answer)
 #define PKT_BUF_LEN 4096
 #define DATA_OFFSET 1024
     char buf[PKT_BUF_LEN];
-    FILE *fp;
     PKT *tmp_pkt;
     PKT_INFO *tmp_pkt_info;
     char *tmp_pos;
     int tmp_ret;
 
-    /* 准备阶段, 设置PKT_INFO */
-    /* A_a.a.com.pcap:  src: 172.16.2.2/55958
-     *                  dst: 172.16.103.2/53
-     *                  type: A 
-     *                  domain name: a.a.com
-     *                  transaction ID: 0x40f8*/
-    fp = pcap_open("../../check/A_a.a.com.pcap");
-    ck_assert_int_ne(fp, NULL);
-
-    tmp_ret = pcap_read_one_pkt(fp, buf + DATA_OFFSET, 
-            PKT_BUF_LEN - DATA_OFFSET);
-    ck_assert_int_eq(tmp_ret, 67);
-
     tmp_pkt = (PKT *)buf;
-    tmp_pkt->data_len = tmp_ret;
+    tmp_pkt->data_len = 67; /* magic 67: 随机偏移数值, 代表报文长度 */
     tmp_pkt->data = buf + DATA_OFFSET;
-    tmp_ret = parse_pkt(tmp_pkt);
-    ck_assert_int_eq(tmp_ret, RET_OK);
+    tmp_pkt->info.cur_pos = tmp_pkt->data + tmp_pkt->data_len;
 
     tmp_pkt_info = &tmp_pkt->info;
     snprintf(tmp_pkt_info->domain, sizeof(tmp_pkt_info->domain),
@@ -219,7 +202,7 @@ Suite * dns_suite(void)
     Suite *s;
     TCase *tc_core;
 
-    s = suite_create("worker/dns.c");
+    s = suite_create("dns/dns.c");
 
     tc_core = tcase_create("get_query_domain");
     tcase_add_checked_fixture(tc_core, setup, teardown);

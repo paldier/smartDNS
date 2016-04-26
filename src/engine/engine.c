@@ -1,5 +1,4 @@
 #include <sys/socket.h>         /* for recvmsg() */
-#include <arpa/inet.h>          /* for htonl()/struct sockaddr_in */
 #include "util_glb.h"
 #include "engine_glb.h"
 #include "log_glb.h"
@@ -14,6 +13,8 @@ struct sockaddr_in s_cli_addr;  /* 客户端地址 */
 struct msghdr s_msg;            /* 报文信息结构体 */
 struct iovec s_iovec;           /* 报文缓存向量 */
 
+
+/***********************GLB FUNC*************************/
 
 int pkt_engine_init()
 {
@@ -56,6 +57,7 @@ int pkt_engine_init_2()
 
 int start_pkt_engine()
 {
+    /* do nothing */
     return RET_OK;
 }
 
@@ -118,9 +120,18 @@ int receive_pkt(PKT **pkt)
         return RET_ERR;
     }
 
+    /* 初始化报文信息 */
     tmp_pkt = (PKT *)s_pkt_buf;
     tmp_pkt->data_len = tmp_ret;
     tmp_pkt->data = s_pkt_buf + DATA_OFFSET;
+
+    /* L2-L3层处理 */
+    tmp_pkt->info.eth_hdr = NULL;
+    tmp_pkt->info.ip_hdr = NULL;
+    tmp_pkt->info.udp_hdr = NULL;
+
+    /* 设置后续处理点 */
+    tmp_pkt->info.cur_pos = tmp_pkt->data;
 
     if (pkt) {
         *pkt = tmp_pkt;
@@ -133,6 +144,8 @@ int receive_pkt(PKT **pkt)
 
 int send_pkt(PKT *pkt)
 {
+    /* 更新PKT信息 */
+    /* 发送 */
     s_msg.msg_iov[0].iov_len = pkt->data_len;
     (void)sendmsg(s_sock_fd, &s_msg, MSG_DONTWAIT);
     return RET_OK;

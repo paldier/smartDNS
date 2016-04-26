@@ -1,8 +1,7 @@
-#include <stdbool.h>        /* for bool+false+true */
 #include <libgen.h>         /* for dirname() */
 #include "util_glb.h"
-#include "log_glb.h"
 #include "cfg_glb.h"
+#include "log_glb.h"
 #include "zone_parse.h"
 
 /* 用于解析流程, 保存上一次的解析结果, 便于继承 */
@@ -370,6 +369,59 @@ RR *create_rr(ZONE *zone, char *rr_name)
     return CREATE_DDARR_ELEM_BYNAME(zone, zone, rr, RR, rr_name);
 }
 
+void print_zone_parse_res(ZONE *zone)
+{
+    char tmp_addr[INET_ADDRSTRLEN];
+    RR *rr;
+    RR_DATA *rr_data;
+
+    if (zone == NULL) {
+        return;
+    }
+
+    printf("\n\n");
+    printf("域名: %s\n", zone->name);
+
+    if (zone->ttl) {
+        printf("$TTL\t%d\n", zone->ttl);
+    }
+    if (strlen(zone->origin_name)) {
+        printf("$ORIGIN\t%s\n", zone->origin_name);
+    }
+    printf("\n\n");
+
+    for (int i=0; i<zone->rr_cnt; i++) {
+        rr = zone->rr[i];
+        if (rr == NULL) {
+            SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");
+            continue;
+        }
+
+        for (int j=0; j<RR_TYPE_MAX; j++) {
+            rr_data = &(rr->data[j]);
+
+            if (rr_data->cnt == 0) {
+                continue;
+            }
+
+            for (int k=0; k<rr_data->cnt; k++) {
+                printf("%s\t%s\t%s\t%d\t%s\n", 
+                        rr->name,
+                        get_class_name(rr_data->rr_class),
+                        get_type_name(rr_data->type),
+                        rr_data->ttl,
+                        inet_ntop(AF_INET, &rr_data->data[k].ip4,
+                            tmp_addr, INET_ADDRSTRLEN)
+                      );
+            }
+        }
+    }
+
+    /* 其他信息 */
+}
+
+/***********************GLB FUNC*************************/
+
 int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
 {
     ZONE *zone;
@@ -509,53 +561,4 @@ void release_zone(GLB_VARS *glb_vars)
     SDNS_FREE(tmp_zones);
 }
 
-void print_zone_parse_res(ZONE *zone)
-{
-    char tmp_addr[INET_ADDRSTRLEN];
-    RR *rr;
-    RR_DATA *rr_data;
 
-    if (zone == NULL) {
-        return;
-    }
-
-    printf("\n\n");
-    printf("域名: %s\n", zone->name);
-
-    if (zone->ttl) {
-        printf("$TTL\t%d\n", zone->ttl);
-    }
-    if (strlen(zone->origin_name)) {
-        printf("$ORIGIN\t%s\n", zone->origin_name);
-    }
-    printf("\n\n");
-
-    for (int i=0; i<zone->rr_cnt; i++) {
-        rr = zone->rr[i];
-        if (rr == NULL) {
-            SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");
-            continue;
-        }
-
-        for (int j=0; j<RR_TYPE_MAX; j++) {
-            rr_data = &(rr->data[j]);
-
-            if (rr_data->cnt == 0) {
-                continue;
-            }
-
-            for (int k=0; k<rr_data->cnt; k++) {
-                printf("%s\t%s\t%s\t%d\t%s\n", 
-                        rr->name,
-                        get_class_name(rr_data->rr_class),
-                        get_type_name(rr_data->type),
-                        rr_data->ttl,
-                        inet_ntop(AF_INET, &rr_data->data[k].ip4,
-                            tmp_addr, INET_ADDRSTRLEN)
-                      );
-            }
-        }
-    }
-
-    /* 其他信息 */
-}

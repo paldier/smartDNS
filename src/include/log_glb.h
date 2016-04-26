@@ -2,7 +2,6 @@
 #define LOG_GLB_H
 
 #include <syslog.h>
-#include "util_glb.h"
 
 /**
  * 日志初始化

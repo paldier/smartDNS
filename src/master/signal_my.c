@@ -82,6 +82,8 @@ int process_SIGCHLD(GLB_VARS *glb_vars)
     return RET_OK;
 }
 
+/***********************GLB FUNC*************************/
+
 int set_required_signal()
 {
     struct st_signal  *sig;

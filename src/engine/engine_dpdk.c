@@ -1,9 +1,7 @@
 #include "util_glb.h"
 #include "engine_glb.h"
-#include "pkt_dispose_glb.h"
-#include "dns_glb.h"
 #include "log_glb.h"
-#include "pkt_dispose.h"
+#include "engine_dpdk.h"
 
 void update_eth_hdr(PKT *pkt)
 {
@@ -190,7 +188,7 @@ int parse_pkt(PKT *pkt)
     }
     pkt_info = &pkt->info;
 
-    pkt_info->eth_hdr = pkt->data;
+    pkt_info->eth_hdr = pkt_info->cur_pos;
     eth_hdr = pkt_info->eth_hdr;
 
     pkt_info->ip_hdr = (char *)eth_hdr + ETH_HDR_LEN;
@@ -217,23 +215,13 @@ int parse_pkt(PKT *pkt)
         return RET_ERR;
     }
 
-    /* DNS解析 */
-    if (parse_dns(pkt) == RET_ERR) {
-        SDNS_LOG_ERR("parse dns error");
-        return RET_ERR;
-    }
-
     return RET_OK;
 }
 
 
 int cons_pkt(PKT *pkt)
 {
-    /* 组装DNS结果 */
-    if (cons_dns(pkt) == RET_ERR) {
-        SDNS_LOG_ERR("cons dns failed");
-        return RET_ERR;
-    }
+    /* 更新PKT/PKT_INFO信息 */
 
     /* 更新UDP包头, 并计算校验和 */
     update_udp_hdr(pkt);
@@ -244,9 +232,39 @@ int cons_pkt(PKT *pkt)
     /* 调换ETH地址 */
     update_eth_hdr(pkt);
 
-    /* 更新PKT信息 */
-    pkt->data_len = pkt->info.cur_pos - pkt->data;
+    return RET_OK;
+}
 
+/***********************GLB FUNC*************************/
+
+int pkt_engine_init()
+{
+    /* 主进程部分初始化, 如配置/EAL环境等 */
+    return RET_OK;
+}
+
+int pkt_engine_init_2()
+{
+    /* 工作进程部分初始化, 如工作相关变量等 */
+    return RET_OK;
+}
+
+int start_pkt_engine()
+{
+    /* 启动DPDK收发报文引擎 */
+    return RET_OK;
+}
+
+int send_pkt(PKT *pkt)
+{
+    /* 向DPDK发送报文 */
+    return RET_OK;
+}
+
+
+int receive_pkt(PKT **pkt)
+{
+    /* 从DPDK收取报文, 并初始化PKT/PKT_INFO结构 */
     return RET_OK;
 }
 

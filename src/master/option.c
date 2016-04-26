@@ -72,6 +72,8 @@ int check_option_val(const char *val)
     return RET_OK;
 }
 
+/***********************GLB FUNC*************************/
+
 int get_options(int argc, char **argv, GLB_VARS *glb_vars)
 {
     int opt_id;         /* 参数在s_options[]中的索引 */

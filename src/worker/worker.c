@@ -2,7 +2,6 @@
 #include "engine_glb.h"
 #include "worker_glb.h"
 #include "signal_glb.h"
-#include "pkt_dispose_glb.h"
 #include "dns_glb.h"
 #include "zone_glb.h"
 #include "sort_glb.h"
@@ -22,12 +21,13 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
         return RET_ERR;
     }
 
-    /* 解析报文 */
-    if (parse_pkt(pkt) == RET_ERR) {
+    /* 解析DNS报文 */
+    if (parse_dns(pkt) == RET_ERR) {
         SDNS_LOG_ERR("parse failed");
         return RET_ERR;
     }
 
+    /* 匹配ACL规则 */
     if (pass_acl(glb_vars, pkt) == RET_ERR) {
         char tmp_addr[INET_ADDRSTRLEN];
 
@@ -37,6 +37,7 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
         return RET_ERR;
     }
 
+    /* 查询RR记录 */
     if (query_zone(glb_vars, pkt) == RET_ERR) {
         SDNS_LOG_ERR("query zone failed,"
                 " [domain: %s]/[type: %d]/[class: %d]",
@@ -51,13 +52,15 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
     }
 
     /* 组装应答报文 */
-    if (cons_pkt(pkt) == RET_ERR) {
+    if (cons_dns(pkt) == RET_ERR) {
         SDNS_LOG_ERR("cons failed");
         return RET_ERR;
     }
 
     return RET_OK;
 }
+
+/***********************GLB FUNC*************************/
 
 void start_worker(GLB_VARS *glb_vars)
 {

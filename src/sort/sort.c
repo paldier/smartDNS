@@ -3,6 +3,8 @@
 #include "sort_glb.h"
 #include "sort.h"
 
+/***********************GLB FUNC*************************/
+
 int sort_answer(GLB_VARS *glb_vars, PKT *pkt)
 {
     PKT_INFO *pkt_info = &pkt->info;

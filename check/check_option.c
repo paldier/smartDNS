@@ -1,9 +1,7 @@
-#include <stdio.h>
-#include <string.h>
+#include "check_main.h"
 #include "util_glb.h"
 #include "cfg_glb.h"
 #include "log_glb.h"
-#include "check_main.h"
 #include "option.h"
 
 /* just for test context, originally defined by main.c */

@@ -91,6 +91,8 @@ int add_dns_answer(PKT *pkt)
     return RET_OK;
 }
 
+/***********************GLB FUNC*************************/
+
 int parse_dns(PKT *pkt)
 {
     PKT_INFO *pkt_info; 
@@ -109,8 +111,7 @@ int parse_dns(PKT *pkt)
     }
     if (dns_hdr->q_cnt != htons(1)
             || dns_hdr->an_cnt != 0
-            || dns_hdr->ns_cnt != 0
-            || dns_hdr->ar_cnt != 0) {
+            || dns_hdr->ns_cnt != 0) {
         SDNS_LOG_ERR("format err, [%d]a/[%d]an/[%d]ns/[%d]ar",
                 ntohs(dns_hdr->q_cnt),
                 ntohs(dns_hdr->an_cnt),
@@ -164,6 +165,9 @@ int cons_dns(PKT *pkt)
         SDNS_LOG_ERR("add answer failed");
         return RET_ERR;
     }
+
+    /* 更新PKT信息 */
+    pkt->data_len = pkt->info.cur_pos - pkt->data;
 
     return RET_OK;
 }

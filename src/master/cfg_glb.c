@@ -1,6 +1,8 @@
-#include <stdbool.h>        /* for true/false */
-#include "log_glb.h"
+#include "util_glb.h"
 #include "cfg_glb.h"
+#include "log_glb.h"
+
+/***********************GLB FUNC*************************/
 
 token_handler get_token_handler(CFG_TYPE *tk_arr, char *token)
 {

@@ -1,5 +1,5 @@
 #include <stdarg.h>     /* for va_list */
-#include <unistd.h>     /* for write() */
+#include "util_glb.h"
 #include "log_glb.h"
 #include "log.h"
 
@@ -23,6 +23,8 @@ static struct st_log_level {
     {"LOG_DEBUG"},
     {""}
 };
+
+/***********************GLB FUNC*************************/
 
 int log_init()
 {
