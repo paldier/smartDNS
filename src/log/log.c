@@ -24,6 +24,10 @@ static struct st_log_level {
     {""}
 };
 
+/* 统计信息汇总结构 */
+static uint64_t s_stat_res[enum_file_label_line_max] = {0};
+static bool s_trace_pkt = true;
+
 /***********************GLB FUNC*************************/
 
 int log_init()
@@ -39,21 +43,21 @@ int log_init()
     return RET_OK;
 }
 
-void log_base(const char *file, const char *func, int line, int level, 
-        const char *fmt, ...)
+void log_base(const char *file, const char *func, int line, 
+        int level, const char *fmt, ...)
 {
     char tmp_str[MAX_LOG_STR_LEN] = {0};
     va_list   args;
 
     va_start(args, fmt);
-    vsnprintf(tmp_str, MAX_LOG_STR_LEN - 1, fmt, args);
+    vsnprintf(tmp_str, MAX_LOG_STR_LEN, fmt, args);
     va_end(args);
 
     if (s_log_fd) {
         fprintf(s_log_fd, "<%s><%s|%s|%d>: %s\n", s_log_level[level].name,
                 file, func, line, tmp_str);
     } else {
-        if (level < LOG_NOTICE) {
+        if (level < LOG_DEBUG) {
             syslog(level, "<%s><%s|%s|%d>: %s", s_log_level[level].name,
                     file, func, line, tmp_str);
         } else {
@@ -62,5 +66,27 @@ void log_base(const char *file, const char *func, int line, int level,
     }
 }
 
+void stat_base(int enum_id, int level, const char *fmt, ...) 
+{
+    assert(enum_id < enum_file_label_line_max);
+
+    /* 统计: 必要步骤 */
+    s_stat_res[enum_id]++;
+
+    /* 报文示踪: 通过全局开关控制 */
+    if (s_trace_pkt) {
+        char tmp_str[MAX_LOG_STR_LEN] = {0};
+        va_list   args;
+
+        va_start(args, fmt);
+        vsnprintf(tmp_str, MAX_LOG_STR_LEN, fmt, args);
+        va_end(args);
+
+        log_base(g_stat_infos[enum_id].f_name, 
+                g_stat_infos[enum_id].func, 
+                atoi(g_stat_infos[enum_id].line), 
+                level, "%s", tmp_str);
+    }
+}
 
 

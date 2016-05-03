@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 #项目信息
-project(smartDNS)
+project(smartDNS C)
 
 #设置底层报文引擎类型
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS ON)
@@ -27,8 +27,18 @@ endif()
 set(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} -O0 -g -ggdb -DDNS_DEBUG")
 set(CMAKE_C_FLAGS_RELEASE "$ENV{CFLAGS} -O3")
 
-#指定编译子目录
+#创建定制目标, 执行外部脚本, 从而创建统计模块儿需要的信息
+#<TAKE CARE!!!>由于没有输出, 此命令总是被执行
+ADD_CUSTOM_TARGET(creatStat
+    COMMAND "python"
+    "${CMAKE_SOURCE_DIR}/create_statistics_mod.py"
+    "${ENGINE_TYPE}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+#指定编译子目录, 并保证统计信息模块儿先于log编译, 因为log中会引用
+#creatStat任务的结果(生成的头文件)
 add_subdirectory(src)
+add_dependencies(log creatStat)
 
 #编译单元测试
 find_package(Check)

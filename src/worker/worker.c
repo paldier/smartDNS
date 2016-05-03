@@ -8,20 +8,24 @@
 #include "log_glb.h"
 #include "worker.h"
 
+/* 定义添加统计信息 */
+#define     STAT_FILE      worker_c
+CREATE_STATISTICS(mod_worker, worker_c)
 
 void start_other_worker(GLB_VARS *glb_vars)
 {
     return;
 }
 
-int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(glb_vars);
     assert(pkt);
 
     /* 解析DNS报文 */
     if (parse_dns(pkt) == RET_ERR) {
-        SDNS_LOG_ERR("parse failed");
+        SDNS_STAT_INFO("parse failed");
         return RET_ERR;
     }
 
@@ -29,38 +33,40 @@ int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
     if (pass_acl(glb_vars, pkt) == RET_ERR) {
         char tmp_addr[INET_ADDRSTRLEN];
 
-        SDNS_LOG_WARN("NOT pass ACL, [%s]", 
-                inet_ntop(AF_INET, &(pkt->info.src_ip.ip4),
-                    tmp_addr, INET_ADDRSTRLEN));
+        inet_ntop(AF_INET, &(pkt->info.src_ip.ip4),
+                tmp_addr, INET_ADDRSTRLEN);
+        SDNS_STAT_INFO("NOT pass ACL, [%s]", tmp_addr); 
         return RET_ERR;
     }
 
     /* 查询RR记录 */
     if (query_zone(glb_vars, pkt) == RET_ERR) {
-        SDNS_LOG_WARN("query zone failed,"
-                " [domain: %s]/[type: %d]/[class: %d]",
+        char tmp_stat_msg[STAT_MSG_LEN];
+        snprintf(tmp_stat_msg, sizeof(tmp_stat_msg), 
+                "query zone failed, [domain: %s]/[type: %d]/[class: %d]",
                 pkt->info.domain, pkt->info.q_type, pkt->info.q_class);
+        SDNS_STAT_INFO("%s", tmp_stat_msg);
         return RET_ERR;
     }
 
     /* 排序算法: DRF + GeoIP */
     if (sort_answer(glb_vars, pkt) == RET_ERR) {
-        SDNS_LOG_ERR("sort failed");
+        SDNS_STAT_INFO("sort failed");
         return RET_ERR;
     }
 
     /* 组装应答报文 */
     if (cons_dns(pkt) == RET_ERR) {
-        SDNS_LOG_ERR("cons failed");
+        SDNS_STAT_INFO("cons failed");
         return RET_ERR;
     }
 
     return RET_OK;
-}
+}STAT_FUNC_END
 
 /***********************GLB FUNC*************************/
 
-void start_worker(GLB_VARS *glb_vars)
+STAT_FUNC_BEGIN void start_worker(GLB_VARS *glb_vars)
 {
     /**
      * 多进程同时监听某个UDP插口, 需要在一个进程建立socket, 然后通过
@@ -103,17 +109,17 @@ void start_worker(GLB_VARS *glb_vars)
     
         /* 接收报文 */
         if (receive_pkt(&pkt) == RET_ERR) {
-            SDNS_LOG_WARN("receive pkt failed");
+            SDNS_STAT_INFO("receive pkt error"); 
             continue;
         }
 
         /* 处理数据 */
         if (process_mesg(glb_vars, pkt) == RET_ERR) {
-            SDNS_LOG_WARN("process failed");
+            SDNS_STAT_INFO("process pkt error"); 
             continue;
         }
 
         /* 忽略发送失败 */
         (void)send_pkt(pkt);
     }
-}
+}STAT_FUNC_END

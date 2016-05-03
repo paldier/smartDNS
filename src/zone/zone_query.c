@@ -4,9 +4,14 @@
 #include "log_glb.h"
 #include "zone_query.h"
 
+/* 定义添加统计信息 */
+#define     STAT_FILE      zone_query_c
+CREATE_STATISTICS(mod_zone, zone_query_c)
 
-ZONE *get_au_zone(GLB_VARS *glb_vars, char *domain)
+
+STAT_FUNC_BEGIN ZONE * get_au_zone(GLB_VARS *glb_vars, char *domain)
 {
+    SDNS_STAT_TRACE();
     assert(glb_vars);
     assert(domain);
 
@@ -26,21 +31,23 @@ ZONE *get_au_zone(GLB_VARS *glb_vars, char *domain)
     }
 
     return zone;
-}
+}STAT_FUNC_END
 
 /***********************GLB FUNC*************************/
 
-int pass_acl(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int pass_acl(GLB_VARS *glb_vars, PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(glb_vars);
     assert(pkt);
 
     /* 暂时空置 */
     return RET_OK;
-}
+}STAT_FUNC_END
 
-int query_zone(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int query_zone(GLB_VARS *glb_vars, PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(glb_vars);
     assert(pkt);
 
@@ -53,7 +60,7 @@ int query_zone(GLB_VARS *glb_vars, PKT *pkt)
 
     zone = get_au_zone(glb_vars, pkt_info->domain);
     if (zone == NULL) {
-        SDNS_LOG_ERR("NULL au zone, [%s]", pkt_info->domain);
+        SDNS_STAT_INFO("NULL au zone, [%s]", pkt_info->domain);
         return RET_ERR;
     }
 
@@ -62,7 +69,7 @@ int query_zone(GLB_VARS *glb_vars, PKT *pkt)
             "%s", pkt_info->domain);
     rr = get_rr(zone, sub_domain);
     if (rr == NULL) {
-        SDNS_LOG_ERR("NULL RR, [sub-dom: %s]", sub_domain);
+        SDNS_STAT_INFO("NULL RR, [sub-dom: %s]", sub_domain);
         return RET_ERR;
     }
     rr_data = &rr->data[get_arr_index_by_type(pkt_info->q_type)];
@@ -73,5 +80,5 @@ int query_zone(GLB_VARS *glb_vars, PKT *pkt)
             sizeof(pkt_info->rr_res[0]) * pkt_info->rr_res_cnt);
 
     return RET_OK;
-}
+}STAT_FUNC_END
 

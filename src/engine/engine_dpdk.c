@@ -3,8 +3,13 @@
 #include "log_glb.h"
 #include "engine_dpdk.h"
 
-void update_eth_hdr(PKT *pkt)
+/* 定义添加统计信息 */
+#define     STAT_FILE      engine_dpdk_c
+CREATE_STATISTICS(mod_engine, engine_dpdk_c)
+
+STAT_FUNC_BEGIN void update_eth_hdr(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     PKT_INFO *pkt_info; 
@@ -20,10 +25,11 @@ void update_eth_hdr(PKT *pkt)
         SDNS_MEMCPY(eth_hdr->smac, eth_hdr->dmac, ETH_ADDR_LEN);
         SDNS_MEMCPY(eth_hdr->dmac, tmp_eth_addr, ETH_ADDR_LEN);
     }
-}
+}STAT_FUNC_END
 
-void update_ip_hdr(PKT *pkt)
+STAT_FUNC_BEGIN void update_ip_hdr(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     PKT_INFO *pkt_info; 
@@ -68,10 +74,11 @@ void update_ip_hdr(PKT *pkt)
 
         ip4_hdr->check = (uint16_t)(~cksum);
     }
-}
+}STAT_FUNC_END
 
-uint16_t cal_chksum_udp(PSEUDO_HDR *pseudo_hdr, UDP_HDR *udp_hdr)
-{
+STAT_FUNC_BEGIN uint16_t cal_chksum_udp(PSEUDO_HDR *pseudo_hdr, 
+        UDP_HDR *udp_hdr) {
+    SDNS_STAT_TRACE();
     assert(pseudo_hdr);
     assert(udp_hdr);
 
@@ -146,10 +153,11 @@ uint16_t cal_chksum_udp(PSEUDO_HDR *pseudo_hdr, UDP_HDR *udp_hdr)
     cksum += (cksum >> 16);
 
     return (uint16_t)(~cksum);
-}
+}STAT_FUNC_END
 
-void update_udp_hdr(PKT *pkt)
+STAT_FUNC_BEGIN void update_udp_hdr(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     PKT_INFO *pkt_info; 
@@ -176,10 +184,11 @@ void update_udp_hdr(PKT *pkt)
     pseudo_hdr.len = udp_hdr->len;
     udp_hdr->check = 0;
     udp_hdr->check = cal_chksum_udp(&pseudo_hdr, udp_hdr);
-}
+}STAT_FUNC_END
 
-int parse_pkt(PKT *pkt)
+STAT_FUNC_BEGIN int parse_pkt(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     PKT_INFO *pkt_info; 
@@ -187,11 +196,9 @@ int parse_pkt(PKT *pkt)
     IP4_HDR *ip4_hdr;
     UDP_HDR *udp_hdr;
 
-    assert(pkt);
-
     /* L2-L4 层解码及必要检测 */
     if (pkt->data_len < ETH_HDR_LEN + IP_HDR_SIZE + UDP_HDR_LEN) { 
-        SDNS_LOG_ERR("NO enough mem, [%d]", pkt->data_len);
+        SDNS_STAT_INFO("NO enough mem, [%d]", pkt->data_len);
         return RET_ERR;
     }
     pkt_info = &pkt->info;
@@ -209,26 +216,30 @@ int parse_pkt(PKT *pkt)
     pkt_info->cur_pos = (char *)udp_hdr + UDP_HDR_LEN;
 
     if (pkt->data + pkt->data_len <= pkt_info->cur_pos) {
-        SDNS_LOG_ERR("NO enough mem, [%d]", pkt->data_len);
+        SDNS_STAT_INFO("NO enough mem, [%d]", pkt->data_len);
         return RET_ERR;
     }
     if (eth_hdr->ether_type != ETH_TYPE_IPV4
             || ip4_hdr->protocol != IP_PROTO_UDP
             || udp_hdr->dport != DNS_PORT) {
-        SDNS_LOG_ERR("NOT dns pkt,"
+        char tmp_stat_msg[STAT_MSG_LEN];
+        snprintf(tmp_stat_msg, sizeof(tmp_stat_msg), 
+                "NOT dns pkt,"
                 " [eth type %d]/[IP proto %d]/[udp dport%d]", 
                 eth_hdr->ether_type,
                 ip4_hdr->protocol,
                 udp_hdr->dport);
+        SDNS_STAT_INFO("%s", tmp_stat_msg);
         return RET_ERR;
     }
 
     return RET_OK;
-}
+}STAT_FUNC_END
 
 
-int cons_pkt(PKT *pkt)
+STAT_FUNC_BEGIN int cons_pkt(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     /* 更新PKT/PKT_INFO信息 */
@@ -243,7 +254,7 @@ int cons_pkt(PKT *pkt)
     update_eth_hdr(pkt);
 
     return RET_OK;
-}
+}STAT_FUNC_END
 
 /***********************GLB FUNC*************************/
 
@@ -265,21 +276,23 @@ int start_pkt_engine()
     return RET_OK;
 }
 
-int send_pkt(PKT *pkt)
+STAT_FUNC_BEGIN int send_pkt(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     /* 向DPDK发送报文 */
     return RET_OK;
-}
+}STAT_FUNC_END
 
 
-int receive_pkt(PKT **pkt)
+STAT_FUNC_BEGIN int receive_pkt(PKT **pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     /* 从DPDK收取报文, 并初始化PKT/PKT_INFO结构 */
     return RET_OK;
-}
+}STAT_FUNC_END
 
 

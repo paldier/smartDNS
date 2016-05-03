@@ -4,6 +4,10 @@
 #include "log_glb.h"
 #include "zone_parse.h"
 
+/* 定义添加统计信息 */
+#define     STAT_FILE      zone_parse_c
+CREATE_STATISTICS(mod_zone, zone_parse_c)
+
 /* 用于解析流程, 保存上一次的解析结果, 便于继承 */
 static RR_DATA s_rr_data = {0};
 static char s_rr_name[LABEL_LEN_MAX + 1];   /* magic 1: 结尾\0 */
@@ -106,8 +110,9 @@ int get_arr_index_by_type(int type)
 }
 
 /* 利用宏定义, 定义函数 */
-ZONE *get_zone(GLB_VARS *glb_vars, char *au_domain) 
+STAT_FUNC_BEGIN ZONE * get_zone(GLB_VARS *glb_vars, char *au_domain) 
 {
+    SDNS_STAT_TRACE();
     assert(glb_vars);
     assert(au_domain);
 
@@ -115,16 +120,17 @@ ZONE *get_zone(GLB_VARS *glb_vars, char *au_domain)
 
     zones = (ZONES *)glb_vars->zones;
     return GET_DDARR_ELEM_BYNAME(zones, zone, ZONE, au_domain);
-}
+}STAT_FUNC_END
 
 
-RR *get_rr(ZONE *zone, const char *sub_domain)
+STAT_FUNC_BEGIN RR * get_rr(ZONE *zone, const char *sub_domain)
 {
+    SDNS_STAT_TRACE();
     assert(zone);
     assert(sub_domain);
 
     return GET_DDARR_ELEM_BYNAME(zone, rr, RR, sub_domain);
-}
+}STAT_FUNC_END
 
 int set_glb_default_ttl(void *zone, char *val)
 {

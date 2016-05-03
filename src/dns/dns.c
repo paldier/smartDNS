@@ -4,8 +4,13 @@
 #include "log_glb.h"
 #include "dns.h"
 
-int get_query_domain(char *beg, int len, char *res)
+/* 定义添加统计信息 */
+#define     STAT_FILE      dns_c
+CREATE_STATISTICS(mod_dns, dns_c)
+
+STAT_FUNC_BEGIN int get_query_domain(char *beg, int len, char *res)
 {
+    SDNS_STAT_TRACE();
     assert(res);
     assert(beg);
     assert(len > 0);
@@ -26,7 +31,7 @@ int get_query_domain(char *beg, int len, char *res)
                 /* 此处的>=之所以包含=, 是因为考虑结尾的0x00字符,
                  * 包含它以后总长度最长为DOMAIN_LEN_MAX */
                 || scan_len + label_len + 1 >= DOMAIN_LEN_MAX) {
-            SDNS_LOG_ERR("domain too long");
+            SDNS_STAT_INFO("domain too long");
             return RET_ERR;
         }
 
@@ -45,10 +50,11 @@ int get_query_domain(char *beg, int len, char *res)
     scan_len += 1;
 
     return scan_len;
-}
+}STAT_FUNC_END
 
-int cons_dns_flag(uint16_t *flags)
+STAT_FUNC_BEGIN int cons_dns_flag(uint16_t *flags)
 {
+    SDNS_STAT_TRACE();
     assert(flags);
 
     uint16_t tmp_flags;
@@ -57,10 +63,11 @@ int cons_dns_flag(uint16_t *flags)
     *flags = tmp_flags;
 
     return RET_OK;
-}
+}STAT_FUNC_END
 
-int add_dns_answer(PKT *pkt)
+STAT_FUNC_BEGIN int add_dns_answer(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     PKT_INFO *pkt_info; 
@@ -90,12 +97,13 @@ int add_dns_answer(PKT *pkt)
     pkt_info->cur_pos = pos;
 
     return RET_OK;
-}
+}STAT_FUNC_END
 
 /***********************GLB FUNC*************************/
 
-int parse_dns(PKT *pkt)
+STAT_FUNC_BEGIN int parse_dns(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     PKT_INFO *pkt_info; 
@@ -109,17 +117,20 @@ int parse_dns(PKT *pkt)
     dns_hdr = pkt_info->dns_hdr;
     if (pkt->data + pkt->data_len 
             < (char *)dns_hdr + DNS_HDR_LEN + sizeof(DNS_QUERY)) {
-        SDNS_LOG_ERR("NO enough mem");
+        SDNS_STAT_INFO("NO enough mem");
         return RET_ERR;
     }
     if (dns_hdr->q_cnt != htons(1)
             || dns_hdr->an_cnt != 0
             || dns_hdr->ns_cnt != 0) {
-        SDNS_LOG_ERR("format err, [%d]a/[%d]an/[%d]ns/[%d]ar",
+        char tmp_stat_msg[STAT_MSG_LEN];
+        snprintf(tmp_stat_msg, sizeof(tmp_stat_msg), 
+                "format err, [%d]a/[%d]an/[%d]ns/[%d]ar",
                 ntohs(dns_hdr->q_cnt),
                 ntohs(dns_hdr->an_cnt),
                 ntohs(dns_hdr->ns_cnt),
                 ntohs(dns_hdr->ar_cnt));
+        SDNS_STAT_INFO("%s", tmp_stat_msg);
         return RET_ERR;
     }
     pkt_info->cur_pos += DNS_HDR_LEN;
@@ -129,7 +140,7 @@ int parse_dns(PKT *pkt)
             pkt->data + pkt->data_len - pkt_info->cur_pos,
             pkt_info->domain);
     if (tmp_ret == RET_ERR) {
-        SDNS_LOG_ERR("get domain failed");
+        SDNS_STAT_INFO("get domain failed");
         return RET_ERR;
     }
     pkt_info->cur_pos += tmp_ret;
@@ -143,14 +154,15 @@ int parse_dns(PKT *pkt)
     /* <TAKE CARE!!!>当前代码不处理"additional records", 应答报文将
      * 覆盖此部分数据 */
     if (pkt->data + pkt->data_len > pkt_info->cur_pos) {
-        SDNS_LOG_DEBUG("have additional info");
+        SDNS_STAT_INFO("have additional info");
     }
 
     return RET_OK;
-}
+}STAT_FUNC_END
 
-int cons_dns(PKT *pkt)
+STAT_FUNC_BEGIN int cons_dns(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
     /**
      * 调用此函数时, PKT_INFO->cur_pos与调用parse_dns()后一致;
@@ -160,7 +172,7 @@ int cons_dns(PKT *pkt)
     /* 变更报文标识: 应答, 不支持递归 */
     if (cons_dns_flag(&(((DNS_HDR *)pkt->info.dns_hdr)->flags))
             == RET_ERR) {
-        SDNS_LOG_ERR("set flag failed");
+        SDNS_STAT_INFO("set flag failed");
         return RET_ERR;
     }
 
@@ -168,7 +180,7 @@ int cons_dns(PKT *pkt)
     /* 域名列表压缩: 当前Answer部分仅支持A记录, 因此全压缩 */
     /* 添加查询结果: 域名全压缩 */
     if (add_dns_answer(pkt) == RET_ERR) {
-        SDNS_LOG_ERR("add answer failed");
+        SDNS_STAT_INFO("add answer failed");
         return RET_ERR;
     }
 
@@ -176,5 +188,5 @@ int cons_dns(PKT *pkt)
     pkt->data_len = pkt->info.cur_pos - pkt->data;
 
     return RET_OK;
-}
+}STAT_FUNC_END
 

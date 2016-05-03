@@ -1,1 +1,3 @@
 build
+src/log/statistics.c
+src/include/statistics_glb.h

@@ -1,25 +1,26 @@
 #include "util_glb.h"
 #include "engine_glb.h"
 #include "sort_glb.h"
+#include "log_glb.h"
 #include "sort.h"
+
+/* 定义添加统计信息 */
+#define     STAT_FILE      sort_c
+CREATE_STATISTICS(mod_sort, sort_c)
 
 /***********************GLB FUNC*************************/
 
-int sort_answer(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int sort_answer(GLB_VARS *glb_vars, PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(glb_vars);
     assert(pkt);
-
-    PKT_INFO *pkt_info = &pkt->info;
-
-    if (pkt_info->rr_res_cnt == 0) {
-        return RET_OK;
-    }
+    assert(pkt->info.rr_res_cnt);
 
     /* 优先级1(最高): 根据GeoIP排序 */
 
     /* 优先级2(次高): 根据负载排序 */
 
     return RET_OK;
-}
+}STAT_FUNC_END
 

@@ -4,6 +4,10 @@
 #include "log_glb.h"
 #include "engine.h"
 
+/* 定义添加统计信息 */
+#define     STAT_FILE      engine_c
+CREATE_STATISTICS(mod_engine, engine_c)
+
 #define PKT_BUF_LEN 4096
 #define DATA_OFFSET 1024
 
@@ -22,6 +26,7 @@ int pkt_engine_init()
         SDNS_LOG_ERR("NO enough room for auxiliary info");
         return RET_ERR;
     }
+    SDNS_LOG_DEBUG("auxiliary info size [%lu]", sizeof(PKT_INFO));
 
     /* 建立UDP监听插口 */
     struct sockaddr_in serv_addr;
@@ -62,8 +67,9 @@ int start_pkt_engine()
 }
 
 
-int receive_pkt(PKT **pkt)
+STAT_FUNC_BEGIN int receive_pkt(PKT **pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 #if 0
     重要的数据结构注解
@@ -117,7 +123,7 @@ int receive_pkt(PKT **pkt)
     /* 接收数据 */
     tmp_ret = recvmsg(s_sock_fd, &s_msg, 0);
     if (tmp_ret < 0) {
-        SDNS_LOG_ERR("%s", strerror(errno));
+        SDNS_STAT_INFO("%s", strerror(errno));
         return RET_ERR;
     }
 
@@ -137,10 +143,11 @@ int receive_pkt(PKT **pkt)
     *pkt = tmp_pkt;
 
     return RET_OK;
-}
+}STAT_FUNC_END
 
-int send_pkt(PKT *pkt)
+STAT_FUNC_BEGIN int send_pkt(PKT *pkt)
 {
+    SDNS_STAT_TRACE();
     assert(pkt);
 
     /* 更新PKT信息 */
@@ -148,7 +155,7 @@ int send_pkt(PKT *pkt)
     s_msg.msg_iov[0].iov_len = pkt->data_len;
     (void)sendmsg(s_sock_fd, &s_msg, MSG_DONTWAIT);
     return RET_OK;
-}
+}STAT_FUNC_END
 
 
 
