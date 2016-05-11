@@ -12,15 +12,14 @@
 #define     STAT_FILE      worker_c
 CREATE_STATISTICS(mod_worker, worker_c)
 
-void start_other_worker(GLB_VARS *glb_vars)
+void start_other_worker()
 {
     return;
 }
 
-STAT_FUNC_BEGIN int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int process_mesg(PKT *pkt)
 {
     SDNS_STAT_TRACE();
-    assert(glb_vars);
     assert(pkt);
 
     /* 解析DNS报文 */
@@ -30,7 +29,7 @@ STAT_FUNC_BEGIN int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
     }
 
     /* 匹配ACL规则 */
-    if (pass_acl(glb_vars, pkt) == RET_ERR) {
+    if (pass_acl(pkt) == RET_ERR) {
         char tmp_addr[INET_ADDRSTRLEN];
 
         inet_ntop(AF_INET, &(pkt->info.src_ip.ip4),
@@ -40,7 +39,7 @@ STAT_FUNC_BEGIN int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
     }
 
     /* 查询RR记录 */
-    if (query_zone(glb_vars, pkt) == RET_ERR) {
+    if (query_zone(pkt) == RET_ERR) {
         char tmp_stat_msg[STAT_MSG_LEN];
         snprintf(tmp_stat_msg, sizeof(tmp_stat_msg), 
                 "query zone failed, [domain: %s]/[type: %d]/[class: %d]",
@@ -50,7 +49,7 @@ STAT_FUNC_BEGIN int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
     }
 
     /* 排序算法: DRF + GeoIP */
-    if (sort_answer(glb_vars, pkt) == RET_ERR) {
+    if (sort_answer(pkt) == RET_ERR) {
         SDNS_STAT_INFO("sort failed");
         return RET_ERR;
     }
@@ -66,7 +65,7 @@ STAT_FUNC_BEGIN int process_mesg(GLB_VARS *glb_vars, PKT *pkt)
 
 /***********************GLB FUNC*************************/
 
-STAT_FUNC_BEGIN void start_worker(GLB_VARS *glb_vars)
+STAT_FUNC_BEGIN void start_worker()
 {
     /**
      * 多进程同时监听某个UDP插口, 需要在一个进程建立socket, 然后通过
@@ -87,6 +86,7 @@ STAT_FUNC_BEGIN void start_worker(GLB_VARS *glb_vars)
         SDNS_LOG_DEBUG("In parent, fork worker[%d]", child_pid);
         return;
     }
+    SET_PROCESS_ROLE(PROCESS_ROLE_WORKER);
 
     /* 引擎第二阶段初始化 */
     if (pkt_engine_init_2() == RET_ERR) {
@@ -95,7 +95,7 @@ STAT_FUNC_BEGIN void start_worker(GLB_VARS *glb_vars)
     }
 
     /* 启动其他worker进程 */
-    start_other_worker(glb_vars);
+    start_other_worker();
 
     /* 去除信号屏蔽 */
     if (clear_mask_signal() == RET_ERR) {
@@ -114,7 +114,7 @@ STAT_FUNC_BEGIN void start_worker(GLB_VARS *glb_vars)
         }
 
         /* 处理数据 */
-        if (process_mesg(glb_vars, pkt) == RET_ERR) {
+        if (process_mesg(pkt) == RET_ERR) {
             SDNS_STAT_INFO("process pkt error"); 
             continue;
         }

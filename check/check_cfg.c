@@ -1,15 +1,23 @@
 #include "check_main.h"
 #include "util_glb.h"
 #include "cfg_glb.h"
+#include "mem_glb.h"
 #include "log_glb.h"
 #include "cfg.h"
 
-/* just for test context, originally defined by main.c */
-static GLB_VARS s_glb_vars;
 
 static void setup(void)
 {
-    log_init();
+    int tmp_ret;
+
+    INIT_GLB_VARS();
+    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
+    snprintf(get_glb_vars()->conf_file, sizeof(get_glb_vars()->conf_file),
+            "%s", "../../conf/master.conf");
+    tmp_ret = modules_init();
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    tmp_ret = create_shared_mem_for_test();
+    ck_assert_int_eq(tmp_ret, RET_OK);
 }
 
 static void teardown(void)
@@ -19,22 +27,13 @@ static void teardown(void)
 
 START_TEST (test_cfg_parse_RET_OK)
 {
-    ZONE_CFG_INFO *zone_cfg;
+    ZONE_CFG *zone_cfg;
     int tmp_ret;
 
-    /* 解析前验证 */
-    SDNS_MEMSET(&s_glb_vars, 0, sizeof(GLB_VARS));
-    zone_cfg = get_zone_cfg(&s_glb_vars, "example.com.");
-    ck_assert_int_eq(zone_cfg, NULL);
-
-    /* 文件路径相对于可执行文件路径~/build/check/check_smartDNS */
-    snprintf(s_glb_vars.conf_file, CONF_FILE_LEN, "%s", 
-            "../../conf/master.conf");
-    tmp_ret = cfg_parse(&s_glb_vars);
+    tmp_ret = cfg_parse();
     ck_assert_int_eq(tmp_ret, RET_OK);
 
-    /* 验证解析结果 */
-    zone_cfg = get_zone_cfg(&s_glb_vars, "example.com.");
+    zone_cfg = get_zone_cfg("example.com.");
     ck_assert_int_ne(zone_cfg, NULL);
     ck_assert_str_eq(zone_cfg->name, "example.com.");
     ck_assert_str_eq(zone_cfg->file, "example.zone");

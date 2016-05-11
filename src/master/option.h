@@ -15,7 +15,7 @@
  * @param: void
  * @retval: RET_OK/RET_ERR
  */
-int init_options_type();
+int init_options_type(void);
 
 /**
  * 获取命令行参数类型

@@ -9,6 +9,7 @@
  */
 #include <stdio.h>      /* for printf() */
 #include <stdlib.h>     /* for exit() */
+#include "util_glb.h"
 #include "check_main.h"
 
 /* 测试实例 */

@@ -12,11 +12,12 @@ add_subdirectory(zone)
 add_subdirectory(sort)
 add_subdirectory(pcap)
 add_subdirectory(dns)
+add_subdirectory(mem)
 add_subdirectory(log)
 
 #指定生成目标
 add_executable(smartDNS ${MAIN_SRCS})
-target_link_libraries(smartDNS master engine worker zone sort log dns)
+target_link_libraries(smartDNS master engine worker zone sort log dns mem)
 
 
 

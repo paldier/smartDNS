@@ -5,11 +5,10 @@
 
 /**
  * 分配ZONE配置结构体
- * @param glb_vars: [in][out], 全局变量集合结构
  * @param zone_name: [in], 权威域名
  * @retval: NULL/ZONE结构指针
  */
-ZONE *create_zone(GLB_VARS *glb_vars, char *zone_name);
+ZONE *create_zone(char *zone_name);
 
 /**
  * 处理$TTL关键字
@@ -65,12 +64,7 @@ int is_digit(char *val);
  */
 int parse_rr(void *rr, char *val);
 
-/**
- * 调试, 打印.zone配置文件解析结果
- * @param zone: [in], 域配置结构
- * @retval: void
- */
-void print_zone_parse_res(ZONE *zone);
+
 
 
 #endif

@@ -95,25 +95,16 @@ typedef struct st_zone {
     int ttl;                /* 对应$TTL, 默认TTL */
     
     /* TODO:暂时用数组实现, 后续利用AC树优化 */
-    RR **rr;               /* 对应记录 */
+    int rr_offset;
     int rr_cnt;
-    int rr_total;
 }ZONE;
-typedef struct st_zones {
-    /* TODO:暂时用数组实现, 后续利用HASH表优化
-     * (先模拟创建再最终创建, 以保证无冲突 + 内存消耗最小) */
-    ZONE **zone;            /* 权威域指针数组 */
-    int zone_cnt;
-    int zone_total;
-}ZONES;
 
 /**
  * 获取域信息结构
- * @param glb_vars: [in], 全局变量集合结构
  * @param au_domain: [in], 权威域名
  * @retval: NULL/ZONE结构指针
  */
-ZONE *get_zone(GLB_VARS *glb_vars, char *au_domain);
+ZONE *get_zone(char *au_domain);
 
 /**
  * 获取RR记录
@@ -139,6 +130,6 @@ int get_arr_index_by_type(int type);
  * @NOTE
  *  1) 仅用于CHECK检测
  */
-char *get_static_rr_name();
+char *get_static_rr_name(void);
 
 #endif

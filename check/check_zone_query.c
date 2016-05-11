@@ -2,28 +2,30 @@
 #include "util_glb.h"
 #include "engine_glb.h"
 #include "zone_glb.h"
-#include "pcap_read.h"
+#include "mem_glb.h"
+#include "cfg_glb.h"
 #include "log_glb.h"
-#include "engine_dpdk.h"
 #include "zone_query.h"
 
 /* just for test context, originally defined by main.c */
 #define PKT_BUF_LEN 4096
 #define DATA_OFFSET 1024
-static GLB_VARS s_glb_vars;
 static char buf[PKT_BUF_LEN];
 
 static void setup(void)
 {
     int tmp_ret;
 
-    /* 初始化日志系统 */
-    log_init();
+    INIT_GLB_VARS();
+    snprintf(get_glb_vars()->conf_file, sizeof(get_glb_vars()->conf_file),
+            "%s", "../../conf/master.conf");
+    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
+    tmp_ret = modules_init();
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    tmp_ret = create_shared_mem_for_test();
+    ck_assert_int_eq(tmp_ret, RET_OK);
 
-    /* 解析example.zone域配置文件 */
-    SDNS_MEMSET(&s_glb_vars, 0, sizeof(GLB_VARS));
-    tmp_ret = parse_zone_file(&s_glb_vars, "example.com.", 
-            "../../conf/example.zone");
+    tmp_ret = parse_zone_file("example.com.", "example.zone");
     ck_assert_int_eq(tmp_ret, RET_OK);
 }
 
@@ -45,7 +47,7 @@ START_TEST (test_query_zone)
     tmp_pkt_info->q_type = TYPE_A;
     tmp_pkt_info->q_class = CLASS_IN;
 
-    tmp_ret = query_zone(&s_glb_vars, pkt);
+    tmp_ret = query_zone(pkt);
     ck_assert_int_eq(tmp_ret, RET_OK);
 
     ck_assert_int_eq(tmp_pkt_info->rr_res_cnt, 1);
@@ -59,22 +61,22 @@ START_TEST (test_get_au_zone)
 {
     ZONE *zone;
 
-    zone = get_au_zone(&s_glb_vars, "example.com.");
+    zone = get_au_zone("example.com.");
     ck_assert_int_ne(zone, NULL);
     ck_assert_str_eq(zone->name, "example.com.");
 
-    zone = get_au_zone(&s_glb_vars, "www.example.com.");
+    zone = get_au_zone("www.example.com.");
     ck_assert_int_ne(zone, NULL);
     ck_assert_str_eq(zone->name, "example.com.");
 
-    zone = get_au_zone(&s_glb_vars, "www.abc.example.com.");
+    zone = get_au_zone("www.abc.example.com.");
     ck_assert_int_ne(zone, NULL);
     ck_assert_str_eq(zone->name, "example.com.");
 
-    zone = get_au_zone(&s_glb_vars, "www.noexist.com.");
+    zone = get_au_zone("www.noexist.com.");
     ck_assert_int_eq(zone, NULL);
 
-    zone = get_au_zone(&s_glb_vars, "com.");
+    zone = get_au_zone("com.");
     ck_assert_int_eq(zone, NULL);
 }
 END_TEST

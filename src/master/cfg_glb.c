@@ -1,8 +1,67 @@
 #include "util_glb.h"
+#include "engine_glb.h"
 #include "cfg_glb.h"
+#include "mem_glb.h"
+#include "zone_glb.h"
 #include "log_glb.h"
 
+GLB_VARS g_glb_vars;                /* 全局变量集合 */
+
 /***********************GLB FUNC*************************/
+
+GLB_VARS *get_glb_vars()
+{
+    return &g_glb_vars;
+}
+
+void *get_shared_mem()
+{
+    return g_glb_vars.sh_mem;
+}
+
+int modules_init()
+{
+    if (log_init() == RET_ERR) {
+        SDNS_LOG_ERR("LOG init failed");
+        return RET_ERR;
+    }
+
+    if (mem_init() == RET_ERR) {
+        SDNS_LOG_ERR("MEM init failed");
+        return RET_ERR;
+    }
+
+    if (zone_cfg_init() == RET_ERR) {
+        SDNS_LOG_ERR("ZONE_CFG init failed");
+        return RET_ERR;
+    }
+
+    if (zone_init() == RET_ERR) {
+        SDNS_LOG_ERR("ZONE init failed");
+        return RET_ERR;
+    }
+
+    return RET_OK;
+}
+
+int parse_conf_for_test(void)
+{
+    if (create_shared_mem_for_test() == RET_ERR) {
+        return RET_ERR;
+    }
+
+    if (cfg_parse() == RET_ERR) {
+        SDNS_LOG_ERR("parse .conf failed");
+        return RET_ERR;
+    }
+
+    if (zone_parse() == RET_ERR) {
+        SDNS_LOG_ERR("parse .zone failed");
+        return RET_ERR;
+    }
+
+    return RET_OK;
+}
 
 token_handler get_token_handler(CFG_TYPE *tk_arr, char *token)
 {

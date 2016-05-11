@@ -17,27 +17,20 @@ typedef struct st_zone_info {
     char file[TOKEN_NAME_LEN_MAX];  /* 域配置文件.zone */
 
     unsigned int dev_type:1;        /* 地位: master or slave */
-}ZONE_CFG_INFO;
-typedef struct st_cfg_info {
-    ZONE_CFG_INFO **zone_cfg;       /* 域控制信息 */
-    int zone_cfg_cnt;
-    int zone_cfg_total;
-}CFG_INFO;
+}ZONE_CFG;
+typedef struct st_zone_info_test {
+    struct st_zone_info_test *next;
+
+    char name[TOKEN_NAME_LEN_MAX];
+    char file[TOKEN_NAME_LEN_MAX];
+}ZONE_CFG_TEST;
 
 /**
  * 由域名获取对应的域配置信息结构
- * @param glb_vars: [in], 全局配置结构
  * @param zone_name: [in], 域名
  * @retval: NULL/查找结果
  */
-ZONE_CFG_INFO *get_zone_cfg(GLB_VARS *glb_vars, char *zone_name);
-
-/**
- * 调试, 打印.conf配置文件解析结果
- * @param glb_vars: [in], 全局配置结构
- * @retval: void
- */
-void print_cfg_parse_res(GLB_VARS *glb_vars);
+ZONE_CFG *get_zone_cfg(char *zone_name);
 
 /**
  * 创建域管理信息数据结构

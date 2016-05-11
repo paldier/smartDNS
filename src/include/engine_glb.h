@@ -51,20 +51,20 @@ typedef struct st_pkt {
  * @param: void
  * @retval: RET_OK/RET_ERR
  */
-int pkt_engine_init();
+int pkt_engine_init(void);
 
 /**
  * 第二阶段初始化报文收发引擎, 一般在主worker进程调用,
  * 如普通的SOCKET插口操作等
  */
-int pkt_engine_init_2();
+int pkt_engine_init_2(void);
 
 /**
  * 启动报文收发引擎, 如DPDK环境等
  * @param: void
  * @retval: RET_OK/RET_ERR
  */
-int start_pkt_engine();
+int start_pkt_engine(void);
 
 /**
  * 收/发报文

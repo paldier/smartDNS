@@ -16,6 +16,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/zone)
 include_directories(${CMAKE_SOURCE_DIR}/src/pcap)
 include_directories(${CMAKE_SOURCE_DIR}/src/engine)
 include_directories(${CMAKE_SOURCE_DIR}/src/dns)
+include_directories(${CMAKE_SOURCE_DIR}/src/mem)
 include_directories(${CMAKE_SOURCE_DIR}/src/log)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -31,6 +32,7 @@ target_link_libraries(check_smartDNS
     pcap
     engine
     dns
+    mem
     log
     )
 

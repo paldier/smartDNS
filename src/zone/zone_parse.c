@@ -1,12 +1,15 @@
 #include <libgen.h>         /* for dirname() */
 #include "util_glb.h"
 #include "cfg_glb.h"
+#include "mem_glb.h"
 #include "log_glb.h"
 #include "zone_parse.h"
 
 /* 定义添加统计信息 */
 #define     STAT_FILE      zone_parse_c
 CREATE_STATISTICS(mod_zone, zone_parse_c)
+
+#define INVALID_OFFSET  -1
 
 /* 用于解析流程, 保存上一次的解析结果, 便于继承 */
 static RR_DATA s_rr_data = {0};
@@ -34,7 +37,7 @@ static const struct {
     int value;              /* 报文中的值 */
 } types[RR_TYPE_MAX + 1] = {
     {"A",   TYPE_A},
-    {0, 0}
+    {NULL, 0}
 };
 
 /**
@@ -110,16 +113,19 @@ int get_arr_index_by_type(int type)
 }
 
 /* 利用宏定义, 定义函数 */
-STAT_FUNC_BEGIN ZONE * get_zone(GLB_VARS *glb_vars, char *au_domain) 
+STAT_FUNC_BEGIN ZONE * get_zone(char *au_domain) 
 {
     SDNS_STAT_TRACE();
-    assert(glb_vars);
     assert(au_domain);
+    ZONE *zone;
 
-    ZONES *zones;
+    FOR_EACH_AREA(zone, AREA_ZONE) {
+        if (strcmp(zone->name, au_domain) == 0) {
+            return zone;
+        }
+    }
 
-    zones = (ZONES *)glb_vars->zones;
-    return GET_DDARR_ELEM_BYNAME(zones, zone, ZONE, au_domain);
+    return NULL;
 }STAT_FUNC_END
 
 
@@ -128,8 +134,19 @@ STAT_FUNC_BEGIN RR * get_rr(ZONE *zone, const char *sub_domain)
     SDNS_STAT_TRACE();
     assert(zone);
     assert(sub_domain);
+    RR *rr;
 
-    return GET_DDARR_ELEM_BYNAME(zone, rr, RR, sub_domain);
+    if (zone->rr_offset == INVALID_OFFSET) {
+        return NULL;
+    }
+
+    FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
+        if (strcmp(rr->name, sub_domain) == 0) {
+            return rr;
+        }
+    }
+
+    return NULL;
 }STAT_FUNC_END
 
 int set_glb_default_ttl(void *zone, char *val)
@@ -380,92 +397,108 @@ int parse_rr(void *rr, char *val)
     return RET_OK;
 }
 
-ZONE *create_zone(GLB_VARS *glb_vars, char *zone_name)
+ZONE *create_zone(char *zone_name)
 {
-    assert(glb_vars);
     assert(zone_name);
+    ZONE *zone;
 
-    ZONES *tmp_zones;
-
-    /* 是否第一次分配? */
-    tmp_zones = (ZONES *)glb_vars->zones;
-    if (tmp_zones == NULL) {
-        tmp_zones = (ZONES *)SDNS_MALLOC(sizeof(ZONES));
-        if (tmp_zones == NULL) {
-            SDNS_LOG_ERR("malloc failed");
+    /* 判断是否已存在? */
+    FOR_EACH_AREA(zone, AREA_ZONE) {
+        if (strcmp(zone->name, zone_name) == 0) {
+            SDNS_LOG_ERR("duplicate zone");
             return NULL;
         }
-
-        glb_vars->zones = (void *)tmp_zones;
-        SDNS_MEMSET(tmp_zones, 0, sizeof(ZONES));
     }
 
-    return CREATE_DDARR_ELEM_BYNAME(glb_vars, tmp_zones, zone, 
-            ZONE, zone_name);
+    /* 获取域信息结构 */
+    zone = SDNS_MALLOC_GLB(AREA_ZONE);
+    if (zone == NULL) {
+        SDNS_LOG_ERR("create zone fail");
+        return NULL;
+    }
+    SDNS_MEMSET(zone, 0, sizeof(ZONE));
+    zone->rr_offset = INVALID_OFFSET;
+    snprintf(zone->name, sizeof(zone->name), "%s", zone_name);
+
+    return zone;
 }
 
 RR *create_rr(ZONE *zone, char *rr_name)
 {
     assert(zone);
     assert(rr_name);
-
-    return CREATE_DDARR_ELEM_BYNAME(zone, zone, rr, RR, rr_name);
-}
-
-void print_zone_parse_res(ZONE *zone)
-{
-    char tmp_addr[INET_ADDRSTRLEN];
     RR *rr;
-    RR_DATA *rr_data;
+    int offset;
 
-    if (zone == NULL) {
-        return;
-    }
-
-    printf("\n\n");
-    printf("域名: %s\n", zone->name);
-
-    if (zone->ttl) {
-        printf("$TTL\t%d\n", zone->ttl);
-    }
-    if (strlen(zone->origin_name)) {
-        printf("$ORIGIN\t%s\n", zone->origin_name);
-    }
-    printf("\n\n");
-
-    for (int i=0; i<zone->rr_cnt; i++) {
-        rr = zone->rr[i];
-        if (rr == NULL) {
-            SDNS_LOG_ERR("can't be happen, DEBUG IT!!!");
-            continue;
-        }
-
-        for (int j=0; j<RR_TYPE_MAX; j++) {
-            rr_data = &(rr->data[j]);
-
-            if (rr_data->cnt == 0) {
-                continue;
-            }
-
-            for (int k=0; k<rr_data->cnt; k++) {
-                printf("%s\t%s\t%s\t%d\t%s\n", 
-                        rr->name,
-                        get_class_name(rr_data->rr_class),
-                        get_type_name(rr_data->type),
-                        rr_data->ttl,
-                        inet_ntop(AF_INET, &rr_data->data[k].ip4,
-                            tmp_addr, INET_ADDRSTRLEN)
-                      );
+    /* 判断是否已存在? */
+    if (zone->rr_offset != INVALID_OFFSET) {
+        FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
+            if (strcmp(rr->name, rr_name) == 0) {
+                SDNS_LOG_ERR("duplicate rr");
+                return NULL;
             }
         }
     }
 
-    /* 其他信息 */
+    /* 获取域信息结构 */
+    rr = SDNS_MALLOC_GLB_OFFSET(AREA_RR, &offset);
+    if (rr == NULL) {
+        SDNS_LOG_ERR("create rr fail");
+        return NULL;
+    }
+    SDNS_MEMSET(rr, 0, sizeof(RR));
+    snprintf(rr->name, sizeof(rr->name), "%s", rr_name);
+    if (zone->rr_offset == INVALID_OFFSET) {
+        zone->rr_offset = offset;
+    }
+    zone->rr_cnt++;
+
+    return rr;
 }
 
 /***********************GLB FUNC*************************/
+void print_zone_parse_res()
+{
+    char tmp_addr[INET_ADDRSTRLEN];
+    ZONE *zone;
+    RR *rr;
+    RR_DATA *rr_data;
 
-int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
+    printf("\n\n");
+    FOR_EACH_AREA(zone, AREA_ZONE) {
+        printf("域名: %s\n", zone->name);
+        if (zone->ttl) {
+            printf("$TTL\t%d\n", zone->ttl);
+        }
+        if (strlen(zone->origin_name)) {
+            printf("$ORIGIN\t%s\n", zone->origin_name);
+        }
+        printf("\n\n");
+
+        FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
+            for (int i=0; i<RR_TYPE_MAX; i++) {
+                rr_data = &(rr->data[i]);
+
+                if (rr_data->cnt == 0) {
+                    continue;
+                }
+
+                for (int j=0; j<rr_data->cnt; j++) {
+                    printf("%s\t%s\t%s\t%d\t%s\n", 
+                            rr->name,
+                            get_class_name(rr_data->rr_class),
+                            get_type_name(rr_data->type),
+                            rr_data->ttl,
+                            inet_ntop(AF_INET, &rr_data->data[j].ip4,
+                                tmp_addr, INET_ADDRSTRLEN)
+                          );
+                }
+            }
+        }
+    }
+}
+
+int parse_zone_file(char *zone_name, char *zone_file)
 {
     ZONE *zone;
     FILE *fd;
@@ -480,20 +513,11 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
         return RET_ERR;
     }
 
-    /* 检测TYPE_MAX与RR_TYPE_MAX的关系 */
-    for (int i=0; i<TYPE_MAX; i++) {
-        tmp_ret = type_to_arr_index[i];
-        if (tmp_ret > RR_TYPE_MAX) {
-            SDNS_LOG_ERR("type index ID[%d] > RR_TYPE_MAX[%d]", 
-                    tmp_ret, RR_TYPE_MAX);
-            return RET_ERR;
-        }
-    }
-
     /* 构建文件绝对路径 */
-    tmp_ret = snprintf(tmp_buf, LINE_LEN_MAX,
-            "%s/", dirname(((GLB_VARS *)glb_vars)->conf_file));
-    snprintf(tmp_buf + tmp_ret, LINE_LEN_MAX, "%s", zone_file);
+    tmp_ret = snprintf(tmp_buf, sizeof(tmp_buf), "%s", 
+            get_glb_vars()->conf_file);
+    tmp_ret = strlen(dirname(tmp_buf));
+    snprintf(tmp_buf + tmp_ret, LINE_LEN_MAX, "/%s", zone_file);
     fd = fopen(tmp_buf, "r");
     if (fd == NULL) {
         SDNS_LOG_ERR("open [%s] file failed! [%s]", 
@@ -502,7 +526,7 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
     }
 
     /* 分配ZONE内存 */
-    zone = create_zone(glb_vars, zone_name);
+    zone = create_zone(zone_name);
     if (zone == NULL) {
         SDNS_LOG_ERR("create zone failed");
         return RET_ERR;
@@ -572,38 +596,34 @@ int parse_zone_file(GLB_VARS *glb_vars, char *zone_name, char *zone_file)
         }
     }
 
-#ifdef DNS_DEBUG
-    print_zone_parse_res(zone);
-#endif
+    fclose(fd);
 
     return RET_OK;
 }
 
-void release_zone(GLB_VARS *glb_vars)
+int zone_init(void)
 {
-    assert(glb_vars);
+    int tmp_ret;
 
-    ZONES *tmp_zones;
-    ZONE *tmp_zone;
-
-    tmp_zones = (ZONES *)glb_vars->zones;
-
-    if (tmp_zones == NULL) {
-        return;
-    }
-
-    for (int i=0; i<tmp_zones->zone_cnt; i++) {
-        tmp_zone = tmp_zones->zone[i];
-        for (int j=0; j<tmp_zone->rr_cnt; j++) {
-            SDNS_FREE(tmp_zone->rr[j]);
+    /* 检测TYPE_MAX与RR_TYPE_MAX的关系 */
+    for (int i=0; i<TYPE_MAX; i++) {
+        tmp_ret = type_to_arr_index[i];
+        if (tmp_ret > RR_TYPE_MAX) {
+            SDNS_LOG_ERR("type index ID[%d] > RR_TYPE_MAX[%d]", 
+                    tmp_ret, RR_TYPE_MAX);
+            return RET_ERR;
         }
-
-        SDNS_FREE(tmp_zone->rr);
-        SDNS_FREE(tmp_zone);
     }
 
-    SDNS_FREE(tmp_zones->zone);
-    SDNS_FREE(tmp_zones);
+    /* 注册分配共享内存时, 结构体大小 */
+    if (IS_PROCESS_ROLE(PROCESS_ROLE_MASTER)
+            && (register_sh_mem_size(AREA_ZONE, sizeof(ZONE)) == RET_ERR
+                || register_sh_mem_size(AREA_RR, sizeof(RR)) == RET_ERR)
+       ) {
+        return RET_ERR;
+    }
+
+    return RET_OK;
 }
 
 

@@ -8,7 +8,7 @@
  * @param: void
  * @retval: RET_ERR/OK
  */
-int log_init();
+int log_init(void);
 
 /**
  * 日志输出标准函数

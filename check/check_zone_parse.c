@@ -3,12 +3,10 @@
 #include "engine_glb.h"
 #include "cfg_glb.h"
 #include "zone_glb.h"
+#include "mem_glb.h"
 #include "log_glb.h"
 #include "cfg.h"
 #include "zone_parse.h"
-
-/* just for test context, originally defined by main.c */
-static GLB_VARS s_glb_vars;
 
 static void setup(void)
 {
@@ -29,15 +27,22 @@ START_TEST (test_parse_zone_file)
     char *tmp_ip_str;
     int tmp_ret;
 
-    /* 文件路径相对于可执行文件路径~/build/check/check_smartDNS */
-    tmp_ret = parse_zone_file(&s_glb_vars, "example.com.", 
-            "../../conf/example.zone");
+    INIT_GLB_VARS(); 
+    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
+    snprintf(get_glb_vars()->conf_file, sizeof(get_glb_vars()->conf_file),
+            "%s", "../../conf/master.conf");
+    tmp_ret = modules_init();
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    tmp_ret = create_shared_mem_for_test();
     ck_assert_int_eq(tmp_ret, RET_OK);
 
-    /* 验证解析结果 */
-    zone = get_zone(&s_glb_vars, "example.com.");
+    tmp_ret = parse_zone_file("example.com.", "example.zone");
+    ck_assert_int_eq(tmp_ret, RET_OK);
+
+    zone = get_zone("example.com.");
     ck_assert_int_ne(zone, NULL);
     ck_assert_str_eq(zone->name, "example.com.");
+    ck_assert_str_eq(zone->origin_name, "example.com.");
     ck_assert_int_eq(zone->ttl, 86400);
 
     rr = get_rr(zone, "ns1");

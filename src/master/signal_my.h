@@ -10,9 +10,9 @@ void smartDNS_signal_handler(int signo);
 
 /**
  * 处理SIGCHLD信号
- * @param glb_vars: [in][out], 全局数据集合
+ * @param: void
  * @retval: RET_OK/RET_ERR
  */
-int process_SIGCHLD(GLB_VARS *glb_vars);
+int process_SIGCHLD(void);
 
 #endif

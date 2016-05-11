@@ -16,7 +16,7 @@ static struct st_signal {
     char *signame;      /* 信号名 */
     char *name;         /* 在程序中的特殊含义 */
     void (*handler)(int signo);
-    int (*spec_handler)(GLB_VARS *glb_vars);
+    int (*spec_handler)(void);
 } SIGNALS_ARR [] = {
     {SIGCHLD, "SIGCHLD", "", smartDNS_signal_handler, process_SIGCHLD},
     {0, NULL, NULL, NULL, NULL}
@@ -39,10 +39,8 @@ void smartDNS_signal_handler(int signo)
     }
 }
 
-int process_SIGCHLD(GLB_VARS *glb_vars)
+int process_SIGCHLD()
 {
-    assert(glb_vars);
-
     int  status;
     pid_t child_pid;
 
@@ -154,16 +152,14 @@ int wait_required_signal()
     return RET_OK;
 }
 
-int process_signals(GLB_VARS *glb_vars)
+int process_signals()
 {
-    assert(glb_vars);
-
     struct st_signal  *sig;
 
     for (sig = SIGNALS_ARR; sig->signo != 0; sig++) {
         if (sig->signo == s_received_signal
                 && sig->spec_handler) {
-            if (sig->spec_handler(glb_vars) == RET_ERR) {
+            if (sig->spec_handler() == RET_ERR) {
                 SDNS_LOG_WARN("[%s] failed", sig->signame);
                 return RET_ERR;
             }

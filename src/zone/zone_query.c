@@ -9,17 +9,16 @@
 CREATE_STATISTICS(mod_zone, zone_query_c)
 
 
-STAT_FUNC_BEGIN ZONE * get_au_zone(GLB_VARS *glb_vars, char *domain)
+STAT_FUNC_BEGIN ZONE * get_au_zone(char *domain)
 {
     SDNS_STAT_TRACE();
-    assert(glb_vars);
     assert(domain);
 
     char *au_domain = domain;
     ZONE *zone = NULL;
 
     while(au_domain) {
-        zone = get_zone(glb_vars, au_domain);
+        zone = get_zone(au_domain);
         if (zone) {
             break;
         }
@@ -35,20 +34,18 @@ STAT_FUNC_BEGIN ZONE * get_au_zone(GLB_VARS *glb_vars, char *domain)
 
 /***********************GLB FUNC*************************/
 
-STAT_FUNC_BEGIN int pass_acl(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int pass_acl(PKT *pkt)
 {
     SDNS_STAT_TRACE();
-    assert(glb_vars);
     assert(pkt);
 
     /* 暂时空置 */
     return RET_OK;
 }STAT_FUNC_END
 
-STAT_FUNC_BEGIN int query_zone(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int query_zone(PKT *pkt)
 {
     SDNS_STAT_TRACE();
-    assert(glb_vars);
     assert(pkt);
 
     char sub_domain[LABEL_LEN_MAX + 1];
@@ -58,7 +55,7 @@ STAT_FUNC_BEGIN int query_zone(GLB_VARS *glb_vars, PKT *pkt)
     RR *rr;
     RR_DATA *rr_data;
 
-    zone = get_au_zone(glb_vars, pkt_info->domain);
+    zone = get_au_zone(pkt_info->domain);
     if (zone == NULL) {
         SDNS_STAT_INFO("NULL au zone, [%s]", pkt_info->domain);
         return RET_ERR;

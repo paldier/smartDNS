@@ -74,7 +74,7 @@ int check_option_val(const char *val)
 
 /***********************GLB FUNC*************************/
 
-int get_options(int argc, char **argv, GLB_VARS *glb_vars)
+int get_options(int argc, char **argv)
 {
     int opt_id;         /* 参数在s_options[]中的索引 */
     char *opt_val;      /* 参数配置值 */
@@ -117,26 +117,29 @@ int get_options(int argc, char **argv, GLB_VARS *glb_vars)
         switch (opt_id) {
             case '?':
             case 'h':       /* 打印帮助信息 */
-                glb_vars->process_role |= PROCESS_ROLE_HELPER;
+                SET_PROCESS_ROLE(PROCESS_ROLE_HELPER);
                 break;
             case 't':       /* 测试配置文件格式 */
-                glb_vars->process_role |= PROCESS_ROLE_TESTER;
+                SET_PROCESS_ROLE(PROCESS_ROLE_TESTER);
                 break;
             case 'f':       /* 指定配置文件 */
-                snprintf(glb_vars->conf_file, CONF_FILE_LEN, "%s", opt_val);
+                snprintf(get_glb_vars()->conf_file, CONF_FILE_LEN, "%s",
+                        opt_val);
                 break;
             case 's':       /* 指定待处理信号 */
-                snprintf(glb_vars->signal, SIGNAL_STR_LEN, "%s", opt_val);
-                glb_vars->process_role |= PROCESS_ROLE_SIGNALLER;
+                snprintf(get_glb_vars()->signal, SIGNAL_STR_LEN, "%s", 
+                        opt_val);
+                SET_PROCESS_ROLE(PROCESS_ROLE_SIGNALLER);
 
-                if (strcmp(glb_vars->signal, "stop") == 0
-                        || strcmp(glb_vars->signal, "quit") == 0
-                        || strcmp(glb_vars->signal, "reopen") == 0
-                        || strcmp(glb_vars->signal, "reload") == 0) {
+                if (strcmp(get_glb_vars()->signal, "stop") == 0
+                        || strcmp(get_glb_vars()->signal, "quit") == 0
+                        || strcmp(get_glb_vars()->signal, "reopen") == 0
+                        || strcmp(get_glb_vars()->signal, "reload") == 0) {
                     break;
                 }
 
-                SDNS_LOG_ERR("invalid option: \"-s %s\"", glb_vars->signal);
+                SDNS_LOG_ERR("invalid option: \"-s %s\"", 
+                        get_glb_vars()->signal);
                 return RET_ERR;
 
             default:

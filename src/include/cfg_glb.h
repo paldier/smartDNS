@@ -23,40 +23,59 @@ typedef struct st_cfg_token {
  */
 token_handler get_token_handler(CFG_TYPE *tk_arr, char *token);
 
-/** 
- * 解析.conf配置文件 
- * @param glb_vars: [in][out], 全局数据结构集
+/**
+ * 域配置模块儿初始化
+ * @param: void
  * @retval: RET_OK/RET_ERR
  */
-int cfg_parse(GLB_VARS *glb_vars);
+int zone_cfg_init(void);
+
+/** 
+ * 解析.conf配置文件 
+ * @param: void
+ * @retval: RET_OK/RET_ERR
+ */
+int cfg_parse(void);
 
 /**
- * 释放解析.conf配置文件时分配的内存资源
- * @param glb_vars: [in][out], 全局数据结构集
+ * 打印.conf配置文件解析结果
+ * @param: void
  * @retval: void
  */
-void release_cfg(GLB_VARS *glb_vars);
+void print_cfg_parse_res(void);
 
 /**
  * 解析命令行
  * @param argc: [in], 参数个数
  * @param argv: [in], 参数指针数组
- * @param glb_vars: [in][out], 全局数据结构集
  * @retval: RET_OK/RET_ERR
  *
  * @note:
  *      1) 参数格式: -x xxx
  *      2) 多个参数利用空格隔开
  */
-int get_options(int argc, char **argv, GLB_VARS *glb_vars);
+int get_options(int argc, char **argv);
 
 /**
  * 输出使用说明, 包括命令行参数等
  * @param: void
  * @retval: void
  */
-void usage_help();
+void usage_help(void);
 
+/**
+ * 各模块儿初始化
+ * @param: void
+ * @retval: RET_OK/RET_ERR
+ */
+int modules_init(void);
+
+/**
+ * 测试配置文件格式, 并计算所需的共享内存
+ * @param: void
+ * @retval: RET_OK/RET_ERR
+ */
+int parse_conf_for_test(void);
 
 /**
  * 获取给定字符串中的token字符

@@ -4,9 +4,6 @@
 #include "log_glb.h"
 #include "option.h"
 
-/* just for test context, originally defined by main.c */
-static GLB_VARS g_glb_vars;
-
 static void setup(void)
 {
     log_init();
@@ -130,42 +127,42 @@ START_TEST (test_get_options_RET_OK)
     INIT_OPT_ARR(); 
     /* single option */
     INSERT_OPT_ARR_0("-h");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
     
     INSERT_OPT_ARR_0("-?");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
 
     INSERT_OPT_ARR_0("-t");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
     
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-f");
     INSERT_OPT_ARR("xxx");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
 
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-s");
     INSERT_OPT_ARR("stop");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-s");
     INSERT_OPT_ARR("quit");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-s");
     INSERT_OPT_ARR("reopen");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-s");
     INSERT_OPT_ARR("reload");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
 
     /* multi opt */
@@ -177,7 +174,7 @@ START_TEST (test_get_options_RET_OK)
     INSERT_OPT_ARR("reload");
     INSERT_OPT_ARR("-f");
     INSERT_OPT_ARR("xxx");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_OK);
 }
 END_TEST
@@ -192,68 +189,68 @@ START_TEST (test_get_options_RET_ERR)
     INIT_OPT_ARR(); 
     /* miss '-' */
     INSERT_OPT_ARR_0("h");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     INSERT_OPT_ARR_0("?");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     INSERT_OPT_ARR_0("t");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("f");
     INSERT_OPT_ARR("xxx");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("s");
     INSERT_OPT_ARR("quit");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     /* not support options */
     INSERT_OPT_ARR_0("-a");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     /* just '-' */
     INSERT_OPT_ARR_0("-");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     /* nothing but ' ' */
     INSERT_OPT_ARR_0(" ");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     /* join type and value together */
     INSERT_OPT_ARR_0("-fxxx");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     /* one support by one un-sup */
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-h");
     INSERT_OPT_ARR("-fxxx");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-f");
     INSERT_OPT_ARR("xxx");
     INSERT_OPT_ARR("-a");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 
     INIT_OPT_ARR(); 
     INSERT_OPT_ARR("-a");
     INSERT_OPT_ARR("-f");
     INSERT_OPT_ARR("xxx");
-    tmp_ret = get_options(i, (char **)tmp_opt, &g_glb_vars);
+    tmp_ret = get_options(i, (char **)tmp_opt);
     ck_assert_int_eq(tmp_ret, RET_ERR);
 }
 END_TEST

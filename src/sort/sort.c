@@ -10,10 +10,9 @@ CREATE_STATISTICS(mod_sort, sort_c)
 
 /***********************GLB FUNC*************************/
 
-STAT_FUNC_BEGIN int sort_answer(GLB_VARS *glb_vars, PKT *pkt)
+STAT_FUNC_BEGIN int sort_answer(PKT *pkt)
 {
     SDNS_STAT_TRACE();
-    assert(glb_vars);
     assert(pkt);
     assert(pkt->info.rr_res_cnt);
 
