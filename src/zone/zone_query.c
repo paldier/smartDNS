@@ -2,6 +2,7 @@
 #include "engine_glb.h"
 #include "zone_glb.h"
 #include "log_glb.h"
+#include "zone.h"
 #include "zone_query.h"
 
 /* 定义添加统计信息 */
@@ -34,7 +35,7 @@ STAT_FUNC_BEGIN ZONE * get_au_zone(char *domain)
 
 /***********************GLB FUNC*************************/
 
-STAT_FUNC_BEGIN int pass_acl(PKT *pkt)
+STAT_FUNC_BEGIN int pass_acl(void *pkt)
 {
     SDNS_STAT_TRACE();
     assert(pkt);
@@ -43,14 +44,14 @@ STAT_FUNC_BEGIN int pass_acl(PKT *pkt)
     return RET_OK;
 }STAT_FUNC_END
 
-STAT_FUNC_BEGIN int query_zone(PKT *pkt)
+STAT_FUNC_BEGIN int query_zone(void *pkt)
 {
     SDNS_STAT_TRACE();
     assert(pkt);
 
     char sub_domain[LABEL_LEN_MAX + 1];
     char *au_domain;
-    PKT_INFO *pkt_info = &pkt->info;
+    PKT_INFO *pkt_info = &((PKT *)pkt)->info;
     ZONE *zone;
     RR *rr;
     RR_DATA *rr_data;

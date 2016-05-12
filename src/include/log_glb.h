@@ -1,6 +1,31 @@
 #ifndef LOG_GLB_H
 #define LOG_GLB_H
 
+/**
+ * 罗列宏操控示例, 储备!!!
+ *
+ * 示例一:
+ *  #define STRING(x)  #x
+ *  char *pChar = "hello";      ==>     char *pChar = STRING(hello);
+ *
+ * 示例二:
+ *  #define makechar(x) #@x
+ *  char ch = makechar(b);      ==>     char ch = 'b';
+ *
+ * 示例三:
+ * #define link(n)  token##n
+ * int link(9)  = 100;          ==>     int token9   = 100;
+ *
+ * <NOTE>嵌套宏遇到##或#不再展开的问题
+ *  #define STRING(x)   #x
+ *  char *pChar = STRING(__FILE__); ==> char *pChar = "__FILE__";
+ *
+ *  引入中间宏, 展开外层的宏
+ *  #define _STRING(x)  #x
+ *  #define STRING(x)   _STRING(x) 
+ *  char *pChar = STRING(__FILE__); ==> char *pChar = "\"/usr/.../test.c\"";
+ */
+
 #include <syslog.h>
 
 /**

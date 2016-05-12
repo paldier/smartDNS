@@ -1,11 +1,9 @@
 #include "check_main.h"
 #include "util_glb.h"
-#include "engine_glb.h"
-#include "cfg_glb.h"
 #include "zone_glb.h"
 #include "mem_glb.h"
 #include "log_glb.h"
-#include "cfg.h"
+#include "zone.h"
 #include "zone_parse.h"
 
 static void setup(void)
@@ -27,14 +25,7 @@ START_TEST (test_parse_zone_file)
     char *tmp_ip_str;
     int tmp_ret;
 
-    INIT_GLB_VARS(); 
-    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
-    snprintf(get_glb_vars()->conf_file, sizeof(get_glb_vars()->conf_file),
-            "%s", "../../conf/master.conf");
-    tmp_ret = modules_init();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-    tmp_ret = create_shared_mem_for_test();
-    ck_assert_int_eq(tmp_ret, RET_OK);
+    shared_mem_init();
 
     tmp_ret = parse_zone_file("example.com.", "example.zone");
     ck_assert_int_eq(tmp_ret, RET_OK);
@@ -57,7 +48,6 @@ START_TEST (test_parse_zone_file)
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.1");
 
-    rr = NULL;
     rr = get_rr(zone, "foo");
     ck_assert_int_ne(rr, NULL);
     ck_assert_str_eq(rr->name, "foo");
@@ -69,6 +59,12 @@ START_TEST (test_parse_zone_file)
     tmp_addr.s_addr = rr_data->data[0].ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "1.2.3.4");
+
+    rr = get_rr(zone, "unexist");
+    ck_assert_int_eq(rr, NULL);
+
+    zone = get_zone("unexist.com.");
+    ck_assert_int_eq(zone, NULL);
 }
 END_TEST
 
@@ -120,66 +116,69 @@ END_TEST
 
 START_TEST (test_parse_rr_A)
 {
-    RR_DATA tmp_rr_data;
+    RR tmp_rr;
+    RR_DATA *tmp_rr_data;
     char tmp_val[LINE_LEN_MAX];
     char *tmp_ip_str;
     struct in_addr tmp_addr;
     int tmp_ret;
 
+    memset(&tmp_rr, 0, sizeof(tmp_rr));
+    tmp_rr_data = &tmp_rr.data[0];
+
     /* normal */
-    memset(&tmp_rr_data, 0, sizeof(tmp_rr_data));
     snprintf(tmp_val, LINE_LEN_MAX, 
             "www    IN  A   30   192.168.0.2  ;web server definition");
-    tmp_ret = parse_rr(&tmp_rr_data, tmp_val);
+    tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_str_eq(get_static_rr_name(), "www");
-    ck_assert_int_eq(tmp_rr_data.type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data.rr_class, CLASS_IN);
-    ck_assert_int_eq(tmp_rr_data.ttl, 30);
-    tmp_addr.s_addr = tmp_rr_data.data[0].ip4;
+    ck_assert_str_eq(tmp_rr.name, "www");
+    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
+    ck_assert_int_eq(tmp_rr_data->rr_class, CLASS_IN);
+    ck_assert_int_eq(tmp_rr_data->ttl, 30);
+    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 
     /* miss ttl */
-    memset(&tmp_rr_data, 0, sizeof(tmp_rr_data));
+    memset(&tmp_rr, 0, sizeof(tmp_rr));
     snprintf(tmp_val, LINE_LEN_MAX, 
             " www    IN  A      192.168.0.2;web server definition");
-    tmp_ret = parse_rr(&tmp_rr_data, tmp_val);
+    tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_str_eq(get_static_rr_name(), "www");
-    ck_assert_int_eq(tmp_rr_data.type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data.rr_class, CLASS_IN);
-    ck_assert_int_eq(tmp_rr_data.ttl, 0);
-    tmp_addr.s_addr = tmp_rr_data.data[0].ip4;
+    ck_assert_str_eq(tmp_rr.name, "www");
+    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
+    ck_assert_int_eq(tmp_rr_data->rr_class, CLASS_IN);
+    ck_assert_int_eq(tmp_rr_data->ttl, 0);
+    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 
     /* miss NAME and ttl*/
-    memset(&tmp_rr_data, 0, sizeof(tmp_rr_data));
+    memset(&tmp_rr, 0, sizeof(tmp_rr));
     snprintf(tmp_val, LINE_LEN_MAX, 
             "\t\t IN  A      192.168.0.2;  web server definition");
-    tmp_ret = parse_rr(&tmp_rr_data, tmp_val);
+    tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_str_eq(get_static_rr_name(), "www");
-    ck_assert_int_eq(tmp_rr_data.type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data.rr_class, CLASS_IN);
-    ck_assert_int_eq(tmp_rr_data.ttl, 0);
-    tmp_addr.s_addr = tmp_rr_data.data[0].ip4;
+    ck_assert_str_eq(tmp_rr.name, "");
+    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
+    ck_assert_int_eq(tmp_rr_data->rr_class, CLASS_IN);
+    ck_assert_int_eq(tmp_rr_data->ttl, 0);
+    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 
 
     /* miss class and ttl*/
-    memset(&tmp_rr_data, 0, sizeof(tmp_rr_data));
+    memset(&tmp_rr, 0, sizeof(tmp_rr));
     snprintf(tmp_val, LINE_LEN_MAX, 
             "\t\twww  A      192.168.0.2");
-    tmp_ret = parse_rr(&tmp_rr_data, tmp_val);
+    tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_str_eq(get_static_rr_name(), "www");
-    ck_assert_int_eq(tmp_rr_data.type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data.rr_class, 0);
-    ck_assert_int_eq(tmp_rr_data.ttl, 0);
-    tmp_addr.s_addr = tmp_rr_data.data[0].ip4;
+    ck_assert_str_eq(tmp_rr.name, "www");
+    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
+    ck_assert_int_eq(tmp_rr_data->rr_class, 0);
+    ck_assert_int_eq(tmp_rr_data->ttl, 0);
+    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 }

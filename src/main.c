@@ -2,12 +2,12 @@
  * 智能DNS入口文件, 协调各模块儿运行
  */
 #include "util_glb.h"
-#include "cfg_glb.h"
 #include "engine_glb.h"
 #include "worker_glb.h"
 #include "signal_glb.h"
 #include "zone_glb.h"
 #include "mem_glb.h"
+#include "option_glb.h"
 #include "log_glb.h"
 
 
@@ -16,8 +16,19 @@ int main(int argc, char **argv)
     INIT_GLB_VARS();
     SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
 
-    if (modules_init() == RET_ERR) {
-        return 1;
+    if (log_init() == RET_ERR) {
+        SDNS_LOG_ERR("LOG init failed");
+        return RET_ERR;
+    }
+
+    if (mem_init() == RET_ERR) {
+        SDNS_LOG_ERR("MEM init failed");
+        return RET_ERR;
+    }
+
+    if (zone_init() == RET_ERR) {
+        SDNS_LOG_ERR("ZONE init failed");
+        return RET_ERR;
     }
 
     if (get_options(argc, argv) == RET_ERR) {
@@ -38,8 +49,7 @@ int main(int argc, char **argv)
     if (IS_PROCESS_ROLE(PROCESS_ROLE_TESTER)) {
         SDNS_LOG_DEBUG("配置文件测试OK");
 
-        print_cfg_parse_res();
-        print_zone_parse_res();
+        print_parse_res();
         return 0;
     }
 
@@ -49,13 +59,7 @@ int main(int argc, char **argv)
 
     /*****************以下代码应该跑在monitor进程***************/
     SET_PROCESS_ROLE(PROCESS_ROLE_MONITOR);
-    if (cfg_parse() == RET_ERR) {
-        SDNS_LOG_ERR("parse .conf failed");
-        return 1;
-    }
-
-    if (zone_parse() == RET_ERR) {
-        SDNS_LOG_ERR("parse .zone failed");
+    if (parse_conf() == RET_ERR) {
         return 1;
     }
     /*****************以上代码应该跑在monitor进程***************/

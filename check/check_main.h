@@ -2,6 +2,7 @@
 #define CHECK_MAIN_H
 
 #include <check.h>
+#include "check_util.h"
 
 /* 宏: 简化测试集注册流程 */
 #define REGISTER_SUITE(t) \

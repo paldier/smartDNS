@@ -31,7 +31,6 @@ int calculate_mem_total()
     return size;
 }
 
-/***********************GLB FUNC*************************/
 int mem_init()
 {
     int size;
@@ -43,7 +42,7 @@ int mem_init()
     size = AREA_MAX * sizeof(AREA_INFO);
     addr = SDNS_MALLOC(size);
     if (addr == NULL) {
-        SDNS_LOG_ERR("malloc failed");
+        SDNS_LOG_ERR("Malloc failed");
         return RET_ERR;
     }
     SDNS_MEMSET(addr, 0, size);

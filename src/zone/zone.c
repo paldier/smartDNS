@@ -1,56 +1,87 @@
 #include "util_glb.h"
-#include "engine_glb.h"
-#include "cfg_glb.h"
 #include "mem_glb.h"
-#include "zone_glb.h"
 #include "log_glb.h"
+#include "zone_glb.h"
+#include "zone.h"
 
-GLB_VARS g_glb_vars;                /* 全局变量集合 */
+/* 定义添加统计信息 */
+#define     STAT_FILE      zone_c
+CREATE_STATISTICS(mod_zone, zone_c)
 
-/***********************GLB FUNC*************************/
+/**
+ * RR记录类型中的TYPE描述
+ * 数据结构索引等同于RR->data[]的索引
+ */
+static const struct {
+    const char *name;       /* 配置文件中的名字 */
+    int value;              /* RFC值 */
+} typees[RR_TYPE_MAX + 1] = {
+    {"A",   TYPE_A},
+    {NULL, 0}
+};
+/**
+ * 快速转换数组, RR的RFC TYPE => typees[]索引
+ */
+static int type_to_arr_index[TYPE_MAX] = {
+    RR_TYPE_MAX,
+    0,                      /* TYPE_A */
+};
 
-GLB_VARS *get_glb_vars()
+/**
+ * RR记录类型中的CLASS描述
+ */
+static const struct {
+    const char *name;       /* 配置文件中的名字 */
+    int value;              /* RFC值 */
+} classes[] = {
+    {"IN",   CLASS_IN},
+    {NULL, 0}
+};
+
+CONS_GET_XXX_NAME(type, index)
+CONS_GET_XXX_NAME(class, index)
+
+int zone_init()
 {
-    return &g_glb_vars;
+    int tmp_ret;
+
+    /* 检测TYPE_MAX与RR_TYPE_MAX的关系 */
+    for (int i=0; i<TYPE_MAX; i++) {
+        tmp_ret = type_to_arr_index[i];
+        if (tmp_ret > RR_TYPE_MAX) {
+            SDNS_LOG_ERR("type index ID[%d] > RR_TYPE_MAX[%d]", 
+                    tmp_ret, RR_TYPE_MAX);
+            return RET_ERR;
+        }
+    }
+
+    if (IS_PROCESS_ROLE(PROCESS_ROLE_MASTER) 
+            && (register_sh_mem_size(AREA_ZONE_CFG, 
+                    sizeof(ZONE_CFG)) == RET_ERR
+                || register_sh_mem_size(AREA_ZONE, sizeof(ZONE)) == RET_ERR
+                || register_sh_mem_size(AREA_RR, sizeof(RR)) == RET_ERR
+               )
+       ) {
+        SDNS_LOG_ERR("register elem size of shared mem, failed");
+        return RET_ERR;
+    }
+    
+    return RET_OK;
 }
 
-void *get_shared_mem()
+int parse_conf_for_test(void)
 {
-    return g_glb_vars.sh_mem;
-}
-
-int modules_init()
-{
-    if (log_init() == RET_ERR) {
-        SDNS_LOG_ERR("LOG init failed");
-        return RET_ERR;
-    }
-
-    if (mem_init() == RET_ERR) {
-        SDNS_LOG_ERR("MEM init failed");
-        return RET_ERR;
-    }
-
-    if (zone_cfg_init() == RET_ERR) {
-        SDNS_LOG_ERR("ZONE_CFG init failed");
-        return RET_ERR;
-    }
-
-    if (zone_init() == RET_ERR) {
-        SDNS_LOG_ERR("ZONE init failed");
+    if (create_shared_mem_for_test() == RET_ERR
+            || parse_conf() == RET_ERR) {
         return RET_ERR;
     }
 
     return RET_OK;
 }
 
-int parse_conf_for_test(void)
+int parse_conf(void)
 {
-    if (create_shared_mem_for_test() == RET_ERR) {
-        return RET_ERR;
-    }
-
-    if (cfg_parse() == RET_ERR) {
+    if (zone_cfg_parse() == RET_ERR) {
         SDNS_LOG_ERR("parse .conf failed");
         return RET_ERR;
     }
@@ -63,13 +94,20 @@ int parse_conf_for_test(void)
     return RET_OK;
 }
 
+void print_parse_res()
+{
+    print_cfg_parse_res();
+    print_zone_parse_res();
+}
+
 token_handler get_token_handler(CFG_TYPE *tk_arr, char *token)
 {
+    assert(tk_arr);
+    assert(token);
     int i = 0;
 
-    if (tk_arr == NULL 
-            || token == NULL
-            || strlen(token) == 0) {
+    if (strlen(token) == 0) {
+        SDNS_LOG_ERR("NULL token");
         return NULL;
     }
 
@@ -139,11 +177,9 @@ int get_a_token(char *buf, char **token, int *token_len)
 
     
     /* check and init */
-    if (buf == NULL
-            || token == NULL
-            || token_len == NULL) {
-        return RET_ERR;
-    }
+    assert(buf);
+    assert(token);
+    assert(token_len);
     *token = NULL;
     *token_len = 0;
 
@@ -339,33 +375,33 @@ int get_a_token(char *buf, char **token, int *token_len)
                 case MACHINE_STATE_SLASH_SLASH:
                     if (token_beg) {
                         token_end = c_next - 2;
+                        tmp_ret = RET_OK;
+                    } else {
+                        tmp_ret = RET_COMMENT;
                     }
                     machine_state = MACHINE_STATE_END;
-                    tmp_ret = RET_COMMENT;
                     break;
 
                 case MACHINE_STATE_SLASH_STAR:
                     if (token_beg) {
                         token_end = c_next - 2;
+                        tmp_ret = RET_OK;
                     } else {
-                        token_beg = c_next - 2;
-                        token_end = c_next;
+                        tmp_ret = RET_MULTI_COMMENT;
                     }
 
                     machine_state = MACHINE_STATE_END;
-                    tmp_ret = RET_MULTI_COMMENT;
                     break;
 
                 case MACHINE_STATE_STAR_SLASH:
                     if (token_beg) {
                         token_end = c_next - 2;
+                        tmp_ret = RET_OK;
                     } else {
-                        token_beg = c_next - 2;
-                        token_end = c_next;
+                        tmp_ret = RET_MULTI_COMMENT;
                     }
 
                     machine_state = MACHINE_STATE_END;
-                    tmp_ret = RET_MULTI_COMMENT;
                     break;
 
                 case MACHINE_STATE_DQUOTE_DQUOTE:
@@ -378,22 +414,23 @@ int get_a_token(char *buf, char **token, int *token_len)
                 case MACHINE_STATE_BRACE:
                     if (token_beg) {
                         token_end = c_next - 1;
+                        tmp_ret = RET_OK;
                     } else {
-                        token_beg = c_next - 1;
-                        token_end = c_next;
+                        tmp_ret = RET_BRACE;
                     }
 
                     machine_state = MACHINE_STATE_END;
-                    tmp_ret = RET_BRACE;
                     break;
 
                 case MACHINE_STATE_COMMENT:
                     if (token_beg) {
                         token_end = c_next - 1;
+                        tmp_ret = RET_OK;
+                    } else {
+                        tmp_ret = RET_COMMENT;
                     }
 
                     machine_state = MACHINE_STATE_END;
-                    tmp_ret = RET_COMMENT;
                     break;
 
                 case MACHINE_STATE_SEPARATE:
@@ -409,9 +446,11 @@ int get_a_token(char *buf, char **token, int *token_len)
                 case MACHINE_STATE_LINE_END:
                     if (token_beg) {
                         token_end = c_next - 1;
+                        tmp_ret = RET_OK;
+                    } else {
+                        tmp_ret = RET_ENDLINE;
                     }
                     machine_state = MACHINE_STATE_END;
-                    tmp_ret = RET_OK;
                     break;
                 default:
                     ;           /* do nothing */
@@ -435,4 +474,122 @@ int get_a_token(char *buf, char **token, int *token_len)
     return tmp_ret;
 }
 
+int get_a_token_str(char **buf, char *token_res, bool *multi_comm)
+{
+    assert(buf);
+    assert(*buf);
+    assert(token_res);
 
+    char *token_p;
+    int token_len;
+    int tmp_ret;
+
+    token_res[0] = 0;
+
+    /* 获取key */
+    tmp_ret = get_a_token(*buf, &token_p, &token_len);
+    if (tmp_ret == RET_ERR || token_len >= TOKEN_NAME_LEN_MAX) {
+        SDNS_LOG_ERR("conf line format err! [%s]", *buf);
+        return RET_ERR;
+    }
+
+    /* 忽略多行注释 <NOTE>多行注释的尾端必须独立成行 */
+    if (tmp_ret == RET_MULTI_COMMENT) {
+        if (multi_comm) {
+            if (*multi_comm) {
+                *multi_comm = false;
+            } else {
+                *multi_comm = true;
+            }
+        }
+
+        return RET_ENDLINE;
+    }
+    if (token_p == NULL
+            || tmp_ret == RET_COMMENT
+            || tmp_ret == RET_BRACE
+            || tmp_ret == RET_ENDLINE) {
+        return RET_ENDLINE;
+    }
+    
+    /* magic 1: present \0, 参考man snprintf */
+    /* 对于RET_DQUOTE的key, 需要略过token尾端的["] */
+    snprintf(token_res, token_len + 1, "%s", token_p);
+    *buf = token_p + token_len + (tmp_ret == RET_DQUOTE ? 1 : 0);
+
+    return RET_OK;
+}
+
+STAT_FUNC_BEGIN ZONE_CFG * get_zone_cfg(char *zone_name)
+{
+    SDNS_STAT_TRACE();
+    ZONE_CFG *zone_cfg = NULL;
+
+    if (zone_name == NULL || strlen(zone_name) == 0) {
+        SDNS_STAT_INFO("zone name NULL");
+        return NULL;
+    }
+
+    FOR_EACH_AREA(zone_cfg, AREA_ZONE_CFG) {
+        if (strcmp(zone_cfg->name, zone_name) == 0) {
+            break;
+        }
+    }
+
+    return zone_cfg;
+}STAT_FUNC_END
+
+STAT_FUNC_BEGIN ZONE * get_zone(char *au_domain) 
+{
+    SDNS_STAT_TRACE();
+    assert(au_domain);
+    ZONE *zone;
+
+    FOR_EACH_AREA(zone, AREA_ZONE) {
+        if (strcmp(zone->name, au_domain) == 0) {
+            return zone;
+        }
+    }
+
+    SDNS_STAT_INFO("NOT found valid zone, [%s]", au_domain);
+    return NULL;
+}STAT_FUNC_END
+
+
+STAT_FUNC_BEGIN RR * get_rr(ZONE *zone, const char *sub_domain)
+{
+    SDNS_STAT_TRACE();
+    assert(zone);
+    assert(sub_domain);
+    RR *rr;
+
+    if (zone->rr_offset == INVALID_OFFSET) {
+        SDNS_STAT_INFO("invalid offset");
+        return NULL;
+    }
+
+    FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
+        if (strcmp(rr->name, sub_domain) == 0) {
+            return rr;
+        }
+    }
+
+    char tmp_stat_msg[STAT_MSG_LEN];
+    snprintf(tmp_stat_msg, sizeof(tmp_stat_msg), 
+            "NOT found valid RR, [zone: %s][RR: %s]", 
+            zone->name, sub_domain);
+    SDNS_STAT_INFO("%s", tmp_stat_msg);
+    return NULL;
+}STAT_FUNC_END
+
+STAT_FUNC_BEGIN int get_arr_index_by_type(int type)
+{
+    SDNS_STAT_TRACE();
+
+    if (type >= TYPE_MAX) {
+        SDNS_STAT_INFO("invalid RR type, [%d]", type);
+        return RR_TYPE_MAX;
+    }
+
+    return type_to_arr_index[type];
+}STAT_FUNC_END

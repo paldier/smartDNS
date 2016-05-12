@@ -1,7 +1,7 @@
 #include "check_main.h"
 #include "util_glb.h"
-#include "cfg_glb.h"
 #include "log_glb.h"
+#include "option_glb.h"
 #include "option.h"
 
 static void setup(void)

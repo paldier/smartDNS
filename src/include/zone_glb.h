@@ -9,34 +9,37 @@
 int zone_init(void);
 
 /**
- * 解析域配置信息文件.zone
- * @param zone_file: [in], 域配置文件.zone
- * @param zone_name: [in], 域名, example.com(注意它可能不以.结尾)
+ * 解析配置文件
+ * @param: void
  * @retval: RET_OK/RET_ERR
+ *
+ * @NOTE
+ *  1) _for_test函数在临时内存上解析配置文件, 以方便后续计算
+ *      共享内存容量
  */
-int zone_parse(void);
-int parse_zone_file(char *zone_name, char *zone_file);
+int parse_conf(void);
+int parse_conf_for_test(void);
 
 /**
- * 打印.zone配置文件解析结果
+ * 打印配置文件解析结果
  * @param: void
  * @retval: void
  */
-void print_zone_parse_res(void);
+void print_parse_res(void);
 
 /**
  * 验证ACL规则
  * @param pkt: [in], 报文信息结构
  * @retval: RET_OK/RET_ERR
  */
-int pass_acl(PKT *pkt);
+int pass_acl(void *pkt);
 
 /**
  * 查询RR记录
  * @param pkt: [in][out], 报文信息结构
  * @retval: RET_OK/RET_ERR
  */
-int query_zone(PKT *pkt);
+int query_zone(void *pkt);
 
 #endif
 

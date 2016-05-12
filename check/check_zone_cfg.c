@@ -1,23 +1,14 @@
 #include "check_main.h"
 #include "util_glb.h"
-#include "cfg_glb.h"
 #include "mem_glb.h"
+#include "zone_glb.h"
 #include "log_glb.h"
-#include "cfg.h"
+#include "zone.h"
 
 
 static void setup(void)
 {
-    int tmp_ret;
-
-    INIT_GLB_VARS();
-    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
-    snprintf(get_glb_vars()->conf_file, sizeof(get_glb_vars()->conf_file),
-            "%s", "../../conf/master.conf");
-    tmp_ret = modules_init();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-    tmp_ret = create_shared_mem_for_test();
-    ck_assert_int_eq(tmp_ret, RET_OK);
+    shared_mem_init();
 }
 
 static void teardown(void)
@@ -25,12 +16,12 @@ static void teardown(void)
     ;           /* do nothing */
 }
 
-START_TEST (test_cfg_parse_RET_OK)
+START_TEST (test_zone_cfg_parse)
 {
     ZONE_CFG *zone_cfg;
     int tmp_ret;
 
-    tmp_ret = cfg_parse();
+    tmp_ret = zone_cfg_parse();
     ck_assert_int_eq(tmp_ret, RET_OK);
 
     zone_cfg = get_zone_cfg("example.com.");
@@ -38,6 +29,15 @@ START_TEST (test_cfg_parse_RET_OK)
     ck_assert_str_eq(zone_cfg->name, "example.com.");
     ck_assert_str_eq(zone_cfg->file, "example.zone");
     ck_assert_int_eq(zone_cfg->dev_type, 1); 
+
+    zone_cfg = get_zone_cfg("com.");
+    ck_assert_int_eq(zone_cfg, NULL);
+
+    zone_cfg = get_zone_cfg(NULL);
+    ck_assert_int_eq(zone_cfg, NULL);
+
+    zone_cfg = get_zone_cfg("\0");
+    ck_assert_int_eq(zone_cfg, NULL);
 }
 END_TEST
 
@@ -46,11 +46,11 @@ Suite * cfg_suite(void)
     Suite *s;
     TCase *tc_core;
 
-    s = suite_create("master/cfg.c");
+    s = suite_create("zone/zone_cfg.c");
 
-    tc_core = tcase_create("cfg_parse");
+    tc_core = tcase_create("zone_cfg_parse");
     tcase_add_checked_fixture(tc_core, setup, teardown);
-    tcase_add_test(tc_core, test_cfg_parse_RET_OK);
+    tcase_add_test(tc_core, test_zone_cfg_parse);
     suite_add_tcase(s, tc_core);
 
     return s;

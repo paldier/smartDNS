@@ -1,7 +1,13 @@
 #ifndef ZONE_PARSE_H
 #define ZONE_PARSE_H
 
-#include "zone.h"
+/**
+ * 解析域配置信息文件.zone
+ * @param zone_name: [in], 域名, 以.结尾
+ * @param zone_file: [in], 域配置文件.zone
+ * @retval: RET_OK/RET_ERR
+ */
+int parse_zone_file(char *zone_name, char *zone_file);
 
 /**
  * 分配ZONE配置结构体
@@ -63,8 +69,6 @@ int is_digit(char *val);
  * @retval: RET_OK/RET_ERR
  */
 int parse_rr(void *rr, char *val);
-
-
 
 
 #endif

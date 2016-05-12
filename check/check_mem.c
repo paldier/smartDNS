@@ -1,6 +1,5 @@
 #include "check_main.h"
 #include "util_glb.h"
-#include "cfg_glb.h"
 #include "log_glb.h"
 #include "mem_glb.h"
 #include "mem.h"
@@ -13,22 +12,16 @@ static void setup(void)
     AREA_INFO *area_info;
     int tmp_ret;
 
-    INIT_GLB_VARS();
-    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
-    ck_assert_int_eq(get_shared_mem(), NULL); 
+    shared_mem_init();
 
-    tmp_ret = modules_init();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-
-    tmp_ret = create_shared_mem_for_test();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-
+    /* 模仿解析流程 */
     smem_info = get_shared_mem();
     area_info = smem_info->ptr;
     area_info[AREA_ZONE_CFG].cnt = ELEM_CNT;
     area_info[AREA_ZONE].cnt = ELEM_CNT;
     area_info[AREA_RR].cnt = ELEM_CNT;
 
+    /* 重新申请共享内存 */
     tmp_ret = create_shared_mem();
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_ne(get_shared_mem(), NULL); 
@@ -41,21 +34,13 @@ static void teardown(void)
 
 START_TEST (test_create_shared_mem_for_test)
 {
-    int tmp_ret;
     void *addr;
     SMEM_INFO *smem_info;
     AREA_INFO *area_info;
 
-    INIT_GLB_VARS();
-    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
-    ck_assert_int_eq(get_shared_mem(), NULL); 
-    tmp_ret = modules_init();
-    ck_assert_int_eq(tmp_ret, RET_OK);
+    shared_mem_init();
 
-    tmp_ret = create_shared_mem_for_test();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_int_ne(get_shared_mem(), NULL); 
-
+    /* 直接分配最大内存 */
     smem_info = get_shared_mem();
     area_info = smem_info->ptr;
     ck_assert_int_ne(smem_info->mmap_ptr, NULL); 
@@ -84,14 +69,7 @@ START_TEST (test_create_shared_mem)
     SMEM_INFO *smem_info;
     AREA_INFO *area_info;
 
-    INIT_GLB_VARS();
-    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
-    ck_assert_int_eq(get_shared_mem(), NULL); 
-    tmp_ret = modules_init();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-    tmp_ret = create_shared_mem_for_test();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_int_ne(get_shared_mem(), NULL); 
+    shared_mem_init();
 
     /* 模拟解析流程 */
     smem_info = get_shared_mem();

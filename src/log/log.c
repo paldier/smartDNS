@@ -33,13 +33,12 @@ static bool s_trace_pkt = true;
 int log_init()
 {
 #ifdef DNS_DEBUG
-    openlog("smartDNS", LOG_NDELAY|LOG_CONS|LOG_PID|LOG_PERROR, LOG_LOCAL5);
+    openlog("smartDNS", LOG_NDELAY|LOG_PID|LOG_PERROR, LOG_LOCAL5);
 #else
-    openlog("smartDNS", LOG_NDELAY, LOG_LOCAL5);
+    openlog("smartDNS", LOG_NDELAY|LOG_PID, LOG_LOCAL5);
 #endif
     
     SDNS_LOG_DEBUG("log init OK!");
-
     return RET_OK;
 }
 
@@ -77,6 +76,11 @@ void stat_base(int enum_id, int level, const char *fmt, ...)
     if (s_trace_pkt) {
         char tmp_str[MAX_LOG_STR_LEN] = {0};
         va_list   args;
+
+        /* 仅考虑worker进程 */
+        if (!IS_PROCESS_ROLE(PROCESS_ROLE_WORKER)) {
+            return;
+        }
 
         va_start(args, fmt);
         vsnprintf(tmp_str, MAX_LOG_STR_LEN, fmt, args);

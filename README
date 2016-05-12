@@ -42,7 +42,7 @@
     $ cmake ..
     $ make test             #运行单元测试(*可忽略)
     $ make
-    $ ./bin/smartDNS ../conf/example.conf
+    $ ./src/smartDNS ../conf/master.conf
 
 3. 目录结构
     README                  说明文档

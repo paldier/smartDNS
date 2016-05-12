@@ -3,8 +3,9 @@
 #include "engine_glb.h"
 #include "zone_glb.h"
 #include "mem_glb.h"
-#include "cfg_glb.h"
 #include "log_glb.h"
+#include "zone.h"
+#include "zone_parse.h"
 #include "zone_query.h"
 
 /* just for test context, originally defined by main.c */
@@ -16,13 +17,7 @@ static void setup(void)
 {
     int tmp_ret;
 
-    INIT_GLB_VARS();
-    snprintf(get_glb_vars()->conf_file, sizeof(get_glb_vars()->conf_file),
-            "%s", "../../conf/master.conf");
-    SET_PROCESS_ROLE(PROCESS_ROLE_MASTER);
-    tmp_ret = modules_init();
-    ck_assert_int_eq(tmp_ret, RET_OK);
-    tmp_ret = create_shared_mem_for_test();
+    tmp_ret = shared_mem_init();
     ck_assert_int_eq(tmp_ret, RET_OK);
 
     tmp_ret = parse_zone_file("example.com.", "example.zone");
