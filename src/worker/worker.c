@@ -1,3 +1,4 @@
+#include <sys/mman.h>       /* for mprotect() */
 #include "util_glb.h"
 #include "engine_glb.h"
 #include "worker_glb.h"
@@ -5,6 +6,7 @@
 #include "dns_glb.h"
 #include "zone_glb.h"
 #include "sort_glb.h"
+#include "mem_glb.h"
 #include "log_glb.h"
 #include "worker.h"
 
@@ -87,6 +89,10 @@ STAT_FUNC_BEGIN void start_worker()
         return;
     }
     SET_PROCESS_ROLE(PROCESS_ROLE_WORKER);
+    if (mprotect(get_shared_mem(), get_sh_mem_total_size(), 
+                PROT_READ) == -1) {
+        SDNS_LOG_ERR("mprotect err, [%s]\n", strerror(errno));
+    }
 
     /* 引擎第二阶段初始化 */
     if (pkt_engine_init_2() == RET_ERR) {

@@ -17,6 +17,13 @@ enum {
 int mem_init(void);
 
 /**
+ * 获取已分配共享内存的大小
+ * @param: void
+ * @retval: RET_ERR/RET_OK/最终分配的共享内存大小
+ */
+int get_sh_mem_total_size(void);
+
+/**
  * 注册共享内存结构体大小
  * @param enum_area_type_id: [in], 内存的类型, AREA_XXX
  * @param size: [in], 对应此内存类型的结构体大小

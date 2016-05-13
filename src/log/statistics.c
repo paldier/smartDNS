@@ -28,12 +28,12 @@ CALL_RELATION g_call_relations[] = {
 STAT_INFO g_stat_infos[] = {
     {"dns.c", "mod_dns", "get_query_domain", "13"},
     {"dns.c", "mod_dns", "get_query_domain", "34"},
-    {"worker.c", "mod_worker", "process_mesg", "22"},
-    {"worker.c", "mod_worker", "process_mesg", "27"},
-    {"worker.c", "mod_worker", "process_mesg", "37"},
-    {"worker.c", "mod_worker", "process_mesg", "47"},
-    {"worker.c", "mod_worker", "process_mesg", "53"},
-    {"worker.c", "mod_worker", "process_mesg", "59"},
+    {"worker.c", "mod_worker", "process_mesg", "24"},
+    {"worker.c", "mod_worker", "process_mesg", "29"},
+    {"worker.c", "mod_worker", "process_mesg", "39"},
+    {"worker.c", "mod_worker", "process_mesg", "49"},
+    {"worker.c", "mod_worker", "process_mesg", "55"},
+    {"worker.c", "mod_worker", "process_mesg", "61"},
     {"engine.c", "mod_engine", "send_pkt", "150"},
     {"zone.c", "mod_zone", "get_arr_index_by_type", "587"},
     {"zone.c", "mod_zone", "get_arr_index_by_type", "590"},
@@ -62,8 +62,8 @@ STAT_INFO g_stat_infos[] = {
     {"dns.c", "mod_dns", "parse_dns", "133"},
     {"dns.c", "mod_dns", "parse_dns", "143"},
     {"dns.c", "mod_dns", "parse_dns", "157"},
-    {"worker.c", "mod_worker", "start_worker", "112"},
     {"worker.c", "mod_worker", "start_worker", "118"},
+    {"worker.c", "mod_worker", "start_worker", "124"},
     {NULL, NULL, NULL, NULL}
 };
 

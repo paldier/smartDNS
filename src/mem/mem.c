@@ -58,6 +58,11 @@ int mem_init()
     return RET_OK;
 }
 
+int get_sh_mem_total_size()
+{
+    return ((SMEM_INFO *)get_shared_mem())->size;
+}
+
 int create_shared_mem_for_test()
 {
     void *addr;
