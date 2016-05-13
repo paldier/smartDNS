@@ -8,38 +8,24 @@
 #define     STAT_FILE      zone_c
 CREATE_STATISTICS(mod_zone, zone_c)
 
-/**
- * RR记录类型中的TYPE描述
- * 数据结构索引等同于RR->data[]的索引
- */
-static const struct {
-    const char *name;       /* 配置文件中的名字 */
-    int value;              /* RFC值 */
-} typees[RR_TYPE_MAX + 1] = {
+
+static ATTR_DESC s_attr_types[RR_TYPE_MAX + 1] = {
     {"A",   TYPE_A},
     {NULL, 0}
 };
+
+static ATTR_DESC s_attr_classes[] = {
+    {"IN",   CLASS_IN},
+    {NULL, 0}
+};
 /**
- * 快速转换数组, RR的RFC TYPE => typees[]索引
+ * 快速转换数组, RR的   RFC TYPE_X => RR->data[]索引
+ *                      RFC TYPE_X => types[]索引
  */
 static int type_to_arr_index[TYPE_MAX] = {
     RR_TYPE_MAX,
     0,                      /* TYPE_A */
 };
-
-/**
- * RR记录类型中的CLASS描述
- */
-static const struct {
-    const char *name;       /* 配置文件中的名字 */
-    int value;              /* RFC值 */
-} classes[] = {
-    {"IN",   CLASS_IN},
-    {NULL, 0}
-};
-
-CONS_GET_XXX_NAME(type, index)
-CONS_GET_XXX_NAME(class, index)
 
 int zone_init()
 {
@@ -98,6 +84,33 @@ void print_parse_res()
 {
     print_cfg_parse_res();
     print_zone_parse_res();
+}
+
+const char* get_attr_name_by_index(ATTR_DESC *attr, int index)
+{
+    int i = 0;
+
+    while(1) {
+        if (attr[i].value == 0) {
+            break;
+        }
+
+        if (attr[i].value == index) {
+            return attr[i].name;
+        }
+
+        i++;
+    }
+
+    return NULL;
+}
+const char* get_type_name(int rfc_type_index)
+{
+    return get_attr_name_by_index(s_attr_types, rfc_type_index);
+}
+const char* get_class_name(int rfc_class_index)
+{
+    return get_attr_name_by_index(s_attr_classes, rfc_class_index);
 }
 
 token_handler get_token_handler(CFG_TYPE *tk_arr, char *token)
@@ -532,11 +545,12 @@ STAT_FUNC_BEGIN ZONE_CFG * get_zone_cfg(char *zone_name)
 
     FOR_EACH_AREA(zone_cfg, AREA_ZONE_CFG) {
         if (strcmp(zone_cfg->name, zone_name) == 0) {
-            break;
+            return zone_cfg;
         }
     }
 
-    return zone_cfg;
+    SDNS_STAT_INFO("NOT found valid zone_cfg, [%s]", zone_name);
+    return NULL;
 }STAT_FUNC_END
 
 STAT_FUNC_BEGIN ZONE * get_zone(char *au_domain) 

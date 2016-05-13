@@ -95,6 +95,7 @@ int create_shared_mem_for_test()
     area_info = smem_info->ptr;
     addr = POINTER_PAGE_ALIGN((void *)&area_info[AREA_MAX]);
     for (int i=0; i<AREA_MAX; i++) {
+        area_info[i].type = i;
         area_info[i].size = s_for_mem_init[i].size;
         area_info[i].cnt = 0;
         area_info[i].total = s_for_mem_init[i].cnt;
@@ -147,6 +148,7 @@ int create_shared_mem()
     area_info = smem_info->ptr;
     addr = POINTER_PAGE_ALIGN((void *)&area_info[AREA_MAX]);
     for (int i=0; i<AREA_MAX; i++) {
+        area_info[i].type = i;
         area_info[i].size = s_for_mem_init[i].size;
         area_info[i].cnt = 0;
         area_info[i].total = s_for_mem_init[i].cnt;

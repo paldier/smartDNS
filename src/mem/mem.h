@@ -61,6 +61,7 @@ typedef struct st_shared_mem_info {
  */
 typedef struct st_area_info {
     void *ptr;          /* 区域起始地址 */
+    int type;           /* 区域类型, AREA_xxx */
     int size;           /* 元素大小 */
     int cnt;            /* 当前元素个数 */
     int total;          /* 元素的容纳能力 */

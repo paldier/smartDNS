@@ -52,6 +52,7 @@ START_TEST (test_create_shared_mem_for_test)
 
     addr = NULL;
     for (int i=0; i<AREA_MAX; i++) {
+        ck_assert_int_eq(area_info[i].type, i); 
         ck_assert_int_ne(area_info[i].ptr, NULL); 
         if (addr) {
             ck_assert_int_eq(addr, area_info[i].ptr); 
@@ -97,6 +98,7 @@ START_TEST (test_create_shared_mem)
 
     addr = NULL;
     for (int i=0; i<AREA_MAX; i++) {
+        ck_assert_int_eq(area_info[i].type, i); 
         ck_assert_int_eq(area_info[i].cnt, 0); 
 
         ck_assert_int_ne(area_info[i].ptr, NULL); 
@@ -110,6 +112,7 @@ START_TEST (test_create_shared_mem)
     area_info = smem_info->load_ptr;
     addr = NULL;
     for (int i=0; i<AREA_MAX; i++) {
+        ck_assert_int_eq(area_info[i].type, i); 
         ck_assert_int_eq(area_info[i].cnt, 0); 
 
         ck_assert_int_ne(area_info[i].ptr, NULL); 

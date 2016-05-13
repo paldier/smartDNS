@@ -84,6 +84,15 @@ enum {
 };
 
 /**
+ * 属性描述结构, 用于描述RR记录中的TYPE/CLASS等,
+ * 后期方便日志输出等
+ */
+typedef struct st_attr_desc {
+    const char *name;       /* 配置文件中的名字 */
+    int value;              /* RFC值 */
+}ATTR_DESC;
+
+/**
  * 对应xxx.zone文件中域的记录信息
  */
 typedef struct st_rr_SOA {
@@ -111,8 +120,9 @@ typedef struct st_rr_data {
 }RR_DATA;
 typedef struct st_rr {
     char name[LABEL_LEN_MAX + 1];   /* 子域名, magic 1: 结尾\0 */
-    RR_DATA data[RR_TYPE_MAX +1];   /* 类型->索引, 参考type_to_arr_index[]
-                                        magic 1: 哨兵元素 */
+    RR_DATA data[RR_TYPE_MAX +1];   /* TYPE_X类型->索引, 参考
+                                       type_to_arr_index[];
+                                       magic 1: 哨兵元素 */
 }RR;
 typedef struct st_zone {
     char name[DOMAIN_LEN_MAX];          /* 权威域名, 补全以.结尾 */
@@ -164,32 +174,14 @@ int zone_parse(void);
 void print_zone_parse_res(void);
 
 /**
- * 获取RR的RFC索引对应的名字
- * @param rr_class: [in], RR类RFC索引
- * @param type: [in], RR类型索引
+ * 由RFC索引, 获取RR属性对应的属性名字
+ * @param attr: [in], 属性数组, types[]/classes[]
  * @retval: NULL/对应的字符串
  */
-const char* get_class_name(int rr_class);
-const char* get_type_name(int type);
-#define CONS_GET_XXX_NAME(arr, index) \
-    const char* get_##arr##_name(int index)\
-    {\
-        int _tmp_i = 0;\
-        \
-        while(1) {\
-            if (arr##es[_tmp_i].value == 0) {\
-                break;\
-            }\
-            \
-            if (arr##es[_tmp_i].value == index) {\
-                return arr##es[_tmp_i].name;\
-            }\
-            \
-            _tmp_i++;\
-        }\
-        \
-        return NULL;\
-    }
+const char* get_attr_name_by_index(ATTR_DESC *attr, int index);
+const char* get_type_name(int rfc_type_index);
+const char* get_class_name(int rfc_class_index);
+
 
 /**
  * 获取token对应的处理函数
@@ -276,9 +268,13 @@ ZONE *get_zone(char *au_domain);
 RR *get_rr(ZONE *zone, const char *sub_domain);
 
 /**
- * RR的TYPE_XXX转换为RR->data[]的索引
+ * RR的TYPE_XXX转换为RR->data[]/types[]的索引
  * @param type: [in], RR TYPE
  * @retval: 数组索引, 0 ~ RR_TYPE_MAX +1
+ *
+ * @NOTE
+ *  1) 其中RR->data[]存储TYPE_X类型的RR记录解析后的数据
+ *  2) types[]存储TYPE_X的描述信息
  */
 int get_arr_index_by_type(int type);
 
