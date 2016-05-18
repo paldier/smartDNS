@@ -1,6 +1,20 @@
 #ifndef ZONE_PARSE_H
 #define ZONE_PARSE_H
 
+/* 域解析状态机 */
+enum {
+    PARSE_ZONE_BEFORE_SOA,
+    PARSE_ZONE_SOA_RR,
+    PARSE_ZONE_SOA_RR_SERIAL,
+    PARSE_ZONE_SOA_RR_REFRESH,
+    PARSE_ZONE_SOA_RR_RETRY,
+    PARSE_ZONE_SOA_RR_EXPIRE,
+    PARSE_ZONE_SOA_RR_MINIMUM,
+    PARSE_ZONE_SOA_RR_END,
+    PARSE_ZONE_NORMAL_RR,
+    PARSE_ZONE_MAX
+};
+
 /**
  * 解析域配置信息文件.zone
  * @param zone_name: [in], 域名, 以.结尾
@@ -63,12 +77,31 @@ RR *create_rr(ZONE *zone, char *sub_domain);
 int is_digit(char *val);
 
 /**
- * 处理RR记录
+ * 转换输入字符串为uint32
+ * @param val: [in], 待转换的字符串
+ * @retval: RET_ERR/转换结果
+ *
+ * @NOTE
+ *  1) 假设本函数运行在64位平台, 因此int可以承载uint32_t
+ *  2) val支持[0-9hmdw], 其余为非法字符
+ */
+int translate_to_int(char *val);
+
+/**
+ * 处理除SOA外的RR记录
  * @param rr: [in], RR记录, RR *
  * @param val: [in], 对应RR记录
  * @retval: RET_OK/RET_ERR
  */
 int parse_rr(void *rr, char *val);
 
+/**
+ * 解析SOA记录
+ * param buf: [in], 待处理的文件行
+ * param zone: [in][out], 记录解析结果的域
+ * param machine_state: [in][out], 状态机
+ * @retval: RET_OK/RET_ERR
+ */
+int parse_soa_rr(char *buf, ZONE *zone, int *machine_state);
 
 #endif

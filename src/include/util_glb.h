@@ -25,7 +25,7 @@
 /* 规格相关 */
 #define LABEL_LEN_MAX   63      /* 域名中单个label长度最大值 */
 #define DOMAIN_LEN_MAX  255     /* 域名最大长度, 包括结尾的0x00 label */
-#define RR_TYPE_MAX     1       /* 支持的域名种类 */
+#define RR_TYPE_MAX     2       /* 支持的域名种类 */
 #define RR_PER_TYPE_MAX 1       /* 单个域名同类型支持的记录数 */
 #define ZONE_NUM_MAX    100     /* 最大的权威域个数 */
 #define RR_PER_ZONE_MAX 10000   /* 每个域的RR记录数上限 */

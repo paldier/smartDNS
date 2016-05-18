@@ -114,6 +114,62 @@ START_TEST (test_set_glb_au_domain_suffix)
 }
 END_TEST
 
+START_TEST (test_translate_to_int)
+{
+    int res;
+
+    res = translate_to_int("2002022401");
+    ck_assert_int_eq(res, 2002022401);
+
+    res = translate_to_int("15m");
+    ck_assert_int_eq(res, 900);
+    res = translate_to_int("15M");
+    ck_assert_int_eq(res, 900);
+
+    res = translate_to_int("3h");
+    ck_assert_int_eq(res, 10800);
+    res = translate_to_int("3H");
+    ck_assert_int_eq(res, 10800);
+
+    res = translate_to_int("1d");
+    ck_assert_int_eq(res, 86400);
+    res = translate_to_int("1D");
+    ck_assert_int_eq(res, 86400);
+
+    res = translate_to_int("3w");
+    ck_assert_int_eq(res, 1814400);
+    res = translate_to_int("3W");
+    ck_assert_int_eq(res, 1814400);
+
+    res = translate_to_int("1w1d1h1m");
+    ck_assert_int_eq(res, 694860);
+
+    res = translate_to_int("0w1d1h0m");
+    ck_assert_int_eq(res, 90000);
+
+    res = translate_to_int("0w");
+    ck_assert_int_eq(res, 0);
+    res = translate_to_int("00h");
+    ck_assert_int_eq(res, 0);
+
+    /* NOT SO normal case */
+    res = translate_to_int("0h0");
+    ck_assert_int_eq(res, 0);
+
+    res = translate_to_int("h");
+    ck_assert_int_eq(res, 0);
+
+    res = translate_to_int("h0");
+    ck_assert_int_eq(res, 0);
+
+    /* err case */
+    res = translate_to_int("y");
+    ck_assert_int_eq(res, RET_ERR);
+    res = translate_to_int("k");
+    ck_assert_int_eq(res, RET_ERR);
+}
+END_TEST
+
 START_TEST (test_parse_rr_A)
 {
     RR tmp_rr;
@@ -184,6 +240,93 @@ START_TEST (test_parse_rr_A)
 }
 END_TEST
 
+START_TEST (test_parse_soa_rr)
+{
+    ZONE zone;
+    RR_SOA *rr_soa_p;
+    char buf[LINE_LEN_MAX];
+    int machine_state;
+    int tmp_ret;
+
+    memset(&zone, 0, sizeof(zone));
+    snprintf(zone.name, sizeof(zone.name), "%s", "example.com.");
+    machine_state = PARSE_ZONE_SOA_RR;
+    rr_soa_p = &zone.soa;
+
+    /* normal */
+    snprintf(buf, sizeof(buf), 
+            "@  1D  IN	 SOA ns1.example.com.	hostmaster.example.com. (");
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_SERIAL);
+    ck_assert_str_eq(rr_soa_p->name, "example.com.");
+    ck_assert_str_eq(rr_soa_p->au_domain, "ns1.example.com.");
+    ck_assert_str_eq(rr_soa_p->mail, "hostmaster.example.com.");
+    ck_assert_int_eq(rr_soa_p->type, TYPE_SOA);
+    ck_assert_int_eq(rr_soa_p->rr_class, CLASS_IN);
+    ck_assert_int_eq(rr_soa_p->ttl, 3600*24);
+
+    snprintf(buf, sizeof(buf), "			      2002022401 ; serial");
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_REFRESH);
+    ck_assert_int_eq(rr_soa_p->serial, 2002022401);
+
+    snprintf(buf, sizeof(buf), "			      10800 ; refresh, 3h");
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_RETRY);
+    ck_assert_int_eq(rr_soa_p->refresh, 10800);
+    snprintf(buf, sizeof(buf), "			      3h; refresh, 3h");
+    machine_state = PARSE_ZONE_SOA_RR_REFRESH;
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_RETRY);
+    ck_assert_int_eq(rr_soa_p->refresh, 10800);
+
+    snprintf(buf, sizeof(buf), "			      900 ; retry, 15m");
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_EXPIRE);
+    ck_assert_int_eq(rr_soa_p->retry, 900);
+    snprintf(buf, sizeof(buf), "			      15m ; retry, 15m");
+    machine_state = PARSE_ZONE_SOA_RR_RETRY;
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_EXPIRE);
+    ck_assert_int_eq(rr_soa_p->retry, 900);
+
+    snprintf(buf, sizeof(buf), "			      1814400 ; expire, 3w");
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_MINIMUM);
+    ck_assert_int_eq(rr_soa_p->expire, 1814400);
+    snprintf(buf, sizeof(buf), "			      3w ; expire, 3w");
+    machine_state = PARSE_ZONE_SOA_RR_EXPIRE;
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_MINIMUM);
+    ck_assert_int_eq(rr_soa_p->expire, 1814400);
+
+    snprintf(buf, sizeof(buf), "			      8400 ; minimum, 2h20m");
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_END);
+    ck_assert_int_eq(rr_soa_p->minimum, 8400);
+    snprintf(buf, sizeof(buf), "			      2h20m ; minimum, 2h20m");
+    machine_state = PARSE_ZONE_SOA_RR_MINIMUM;
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_END);
+    ck_assert_int_eq(rr_soa_p->minimum, 8400);
+
+    snprintf(buf, sizeof(buf), "			     )");
+    tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
+    ck_assert_int_eq(tmp_ret, RET_OK);
+    ck_assert_int_eq(machine_state, PARSE_ZONE_NORMAL_RR);
+}
+END_TEST
+
 Suite * zone_suite(void)                                               
 {
     Suite *s;
@@ -201,9 +344,19 @@ Suite * zone_suite(void)
     tcase_add_test(tc_core, test_set_glb_au_domain_suffix);
     suite_add_tcase(s, tc_core);
 
+    tc_core = tcase_create("translate_to_int");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
+    tcase_add_test(tc_core, test_translate_to_int);
+    suite_add_tcase(s, tc_core);
+
     tc_core = tcase_create("parse_rr");
     tcase_add_checked_fixture(tc_core, setup, teardown);
     tcase_add_test(tc_core, test_parse_rr_A);
+    suite_add_tcase(s, tc_core);
+
+    tc_core = tcase_create("parse_soa_rr");
+    tcase_add_checked_fixture(tc_core, setup, teardown);
+    tcase_add_test(tc_core, test_parse_soa_rr);
     suite_add_tcase(s, tc_core);
 
     tc_core = tcase_create("zone_parse");

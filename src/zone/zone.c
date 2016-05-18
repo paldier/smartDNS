@@ -11,6 +11,7 @@ CREATE_STATISTICS(mod_zone, zone_c)
 
 static ATTR_DESC s_attr_types[RR_TYPE_MAX + 1] = {
     {"A",   TYPE_A},
+    {"SOA", TYPE_SOA},      /* 由于SOA记录独立于RR结构, 必须置于最后 */
     {NULL, 0}
 };
 
@@ -25,6 +26,11 @@ static ATTR_DESC s_attr_classes[] = {
 static int type_to_arr_index[TYPE_MAX] = {
     RR_TYPE_MAX,
     0,                      /* TYPE_A */
+    RR_TYPE_MAX,
+    RR_TYPE_MAX,
+    RR_TYPE_MAX,
+    RR_TYPE_MAX,
+    RR_TYPE_MAX - 1,        /* TYPE_SOA */
 };
 
 int zone_init()
@@ -35,7 +41,7 @@ int zone_init()
     for (int i=0; i<TYPE_MAX; i++) {
         tmp_ret = type_to_arr_index[i];
         if (tmp_ret > RR_TYPE_MAX) {
-            SDNS_LOG_ERR("type index ID[%d] > RR_TYPE_MAX[%d]", 
+            SDNS_LOG_ERR("type index ID[%d] >= RR_TYPE_MAX[%d]", 
                     tmp_ret, RR_TYPE_MAX);
             return RET_ERR;
         }

@@ -125,6 +125,16 @@ int set_rr_type_A(void *rr, char *val)
     return RET_OK;
 }
 
+int set_rr_type_SOA(void *soa, char *val)
+{
+    assert(soa);
+    assert(val);
+
+    ((RR_SOA *)soa)->type = TYPE_SOA;
+
+    return RET_OK;
+}
+
 int set_rr_class_IN(void *rr, char *val)
 {
     assert(rr);
@@ -148,6 +158,50 @@ int is_digit(char *val)
     }
 
     return yes_or_no;
+}
+
+int translate_to_int(char *val)
+{
+    int res = 0;
+    int tmp_res = 0;
+
+    /* w=weeks, d=days, h=hours, m=minutes */
+    for (int i=0; i<strlen(val); i++) {
+        switch (val[i]) {
+            case 'w':
+            case 'W':
+                res += tmp_res * 3600 * 24 * 7;
+                tmp_res = 0;
+                break;
+            case 'd':
+            case 'D':
+                res += tmp_res * 3600 * 24;
+                tmp_res = 0;
+                break;
+            case 'h':
+            case 'H':
+                res += tmp_res * 3600;
+                tmp_res = 0;
+                break;
+            case 'm':
+            case 'M':
+                res += tmp_res * 60;
+                tmp_res = 0;
+                break;
+            default:
+                if (val[i] >= '0' && val[i] <= '9') {
+                    tmp_res = tmp_res * 10 + val[i] - '0';
+                } else {
+                    return RET_ERR;
+                }
+                break;
+        }
+    }
+
+    /* 纯数字/0h0等 */
+    res += tmp_res;
+
+    return res;
 }
 
 int parse_rr(void *rr, char *val)
@@ -220,6 +274,110 @@ int parse_rr(void *rr, char *val)
     if (!need_data) {           /* 非错误, 由于注释跳出主循环 */
         return RET_ENDLINE;
     }
+
+    return RET_OK;
+}
+
+int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
+{
+    assert(buf);
+    assert(zone);
+    assert(machine_state);
+    assert(*machine_state > PARSE_ZONE_BEFORE_SOA);
+    assert(*machine_state < PARSE_ZONE_NORMAL_RR);
+    char token[TOKEN_NAME_LEN_MAX];
+    int tmp_ret;
+
+    if (*machine_state == PARSE_ZONE_SOA_RR) {
+        /* @  1D  IN	 SOA ns1.example.com.	hostmaster.example.com. ( */
+        tmp_ret = get_a_token_str(&buf, token, NULL);
+        if (tmp_ret != RET_OK) {
+            SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
+            return RET_ERR;
+        }
+        if (strcmp(token, "@") == 0) {
+            snprintf(zone->soa.name, sizeof(zone->soa.name), 
+                    "%s", zone->name); 
+        } else {
+            snprintf(zone->soa.name, sizeof(zone->soa.name), 
+                    "%s", token); 
+        }
+
+        tmp_ret = get_a_token_str(&buf, token, NULL);
+        if (tmp_ret != RET_OK) {
+            SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
+            return RET_ERR;
+        }
+        tmp_ret = translate_to_int(token);
+        if (tmp_ret == RET_ERR) {
+            SDNS_LOG_ERR("SOA TTL format err! [%s]/[%s]", buf, token);
+            return RET_ERR;
+        }
+        zone->soa.ttl = tmp_ret;
+
+        tmp_ret = get_a_token_str(&buf, token, NULL);
+        if (tmp_ret != RET_OK) {
+            SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
+            return RET_ERR;
+        }
+        if (strcmp(token, "IN") == 0) {
+            zone->soa.rr_class = CLASS_IN;
+        } else {
+            SDNS_LOG_ERR("SOA class format err! [%s]/[%s]", buf, token);
+            return RET_ERR;
+        }
+
+        tmp_ret = get_a_token_str(&buf, token, NULL);
+        if (tmp_ret != RET_OK) {
+            SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
+            return RET_ERR;
+        }
+        if (strcmp(token, "SOA") == 0) {
+            zone->soa.type = TYPE_SOA;
+        } else {
+            SDNS_LOG_ERR("SOA type format err! [%s]/[%s]", buf, token);
+            return RET_ERR;
+        }
+
+        tmp_ret = get_a_token_str(&buf, token, NULL);
+        if (tmp_ret != RET_OK) {
+            SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
+            return RET_ERR;
+        }
+        snprintf(zone->soa.au_domain, sizeof(zone->soa.au_domain), 
+                "%s", token); 
+
+        tmp_ret = get_a_token_str(&buf, token, NULL);
+        if (tmp_ret != RET_OK) {
+            SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
+            return RET_ERR;
+        }
+        snprintf(zone->soa.mail, sizeof(zone->soa.mail), "%s", token); 
+    } else if (*machine_state == PARSE_ZONE_SOA_RR_SERIAL
+            || *machine_state == PARSE_ZONE_SOA_RR_REFRESH
+            || *machine_state == PARSE_ZONE_SOA_RR_RETRY
+            || *machine_state == PARSE_ZONE_SOA_RR_EXPIRE
+            || *machine_state == PARSE_ZONE_SOA_RR_MINIMUM) {
+        tmp_ret = get_a_token_str(&buf, token, NULL);
+        if (tmp_ret != RET_OK) {
+            SDNS_LOG_ERR("SOA serial format err! [%s]", buf);
+            return RET_ERR;
+        }
+        tmp_ret = translate_to_int(token);
+        if (tmp_ret == RET_ERR) {
+            SDNS_LOG_ERR("SOA serial format err! [%s]/[%s]", buf, token);
+            return RET_ERR;
+        }
+        ((int *)(&(zone->soa.serial)))[*machine_state 
+            - PARSE_ZONE_SOA_RR_SERIAL] = tmp_ret;
+    } else if (*machine_state == PARSE_ZONE_SOA_RR_END) {
+        ;   /* do nothing */
+    } else {
+        SDNS_LOG_ERR("should NOT here! machine state[%d]", *machine_state);
+        return RET_ERR;
+    }
+
+    (*machine_state)++;
 
     return RET_OK;
 }
@@ -300,6 +458,21 @@ void print_zone_parse_res()
             printf("$ORIGIN\t%s\n", zone->origin_name);
         }
 
+        printf("%s %d %s %s %s %s (\n", 
+                strcmp(zone->soa.name, zone->name) == 0?"@":zone->soa.name,
+                zone->soa.ttl,
+                get_class_name(zone->soa.rr_class),
+                get_type_name(zone->soa.type),
+                zone->soa.au_domain,
+                zone->soa.mail
+                );
+        printf("\t\t\t\t%d\n", zone->soa.serial);
+        printf("\t\t\t\t%d\n", zone->soa.refresh);
+        printf("\t\t\t\t%d\n", zone->soa.retry);
+        printf("\t\t\t\t%d\n", zone->soa.expire);
+        printf("\t\t\t\t%d\n", zone->soa.minimum);
+        printf("\t\t\t\t)\n");
+
         FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
             for (int i=0; i<RR_TYPE_MAX; i++) {
                 rr_data = &(rr->data[i]);
@@ -334,13 +507,6 @@ int parse_zone_file(char *zone_name, char *zone_file)
     char tmp_buf[LINE_LEN_MAX];
     int parse_machine_state;
     int tmp_ret;
-
-    enum {
-        PARSE_ZONE_BEFORE_SOA,
-        PARSE_ZONE_SOA_RR,
-        PARSE_ZONE_OTHER_RR,
-        PARSE_ZONE_MAX
-    };
 
     if (strlen(zone_name) == 0
             || strlen(zone_file) == 0) {
@@ -397,12 +563,17 @@ int parse_zone_file(char *zone_name, char *zone_file)
         }
 
         /* 解析SOA记录 */
-        if (parse_machine_state == PARSE_ZONE_SOA_RR) {
-            parse_machine_state = PARSE_ZONE_OTHER_RR;
+        if (parse_machine_state >= PARSE_ZONE_SOA_RR
+                && parse_machine_state < PARSE_ZONE_NORMAL_RR) {
+            tmp_ret = parse_soa_rr(tmp_buf, zone, &parse_machine_state);
+            if (tmp_ret == RET_ERR) {
+                SDNS_LOG_ERR("parse SOA err! [%s]", tmp_buf);
+                return RET_ERR;
+            }
         }
 
         /* 解析普通RR记录 */
-        if (parse_machine_state == PARSE_ZONE_OTHER_RR) {
+        if (parse_machine_state == PARSE_ZONE_NORMAL_RR) {
             tmp_ret = parse_rr(&rr_cache_parse_res, tmp_buf);
             if (tmp_ret == RET_ERR) { 
                 SDNS_LOG_ERR("conf line format err! [%s]", tmp_buf);

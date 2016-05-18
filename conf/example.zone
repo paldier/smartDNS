@@ -6,17 +6,18 @@
 ; '*'用于wildcarding匹配
 ; '@'声明当前默认域名(current default domain name)
 ; 除SOA外, 其他配置不支持多行
+; w=weeks, d=days, h=hours, m=minutes 
 ; 不支持'和"
 
 $TTL	86400 ; 24 hours could have been written as 24h or 1d
 $ORIGIN example.com.
-;@  1D  IN	 SOA ns1.example.com.	hostmaster.example.com. (
-;			      2002022401 ; serial
-;			      3H ; refresh
-;			      15 ; retry
-;			      1w ; expire
-;			      3h ; minimum
-;			     )
+@  1D  IN	 SOA ns1.example.com.	hostmaster.example.com. (
+			      2002022401 ; serial
+			      10800 ; refresh, 3h
+			      900 ; retry, 15m
+			      1814400 ; expire, 3w
+			      8400 ; minimum, 2h20m
+			     )
 ;       IN  NS     ns1.example.com. ; in the domain
 ;       IN  NS     ns2.smokeyjoe.com. ; external to domain
 ;       IN  MX  10 mail.another.com. ; external mail provider

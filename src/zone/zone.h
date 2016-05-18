@@ -77,6 +77,7 @@
  */
 enum {
     TYPE_A = 1,
+    TYPE_SOA = 6,
     TYPE_MAX
 };
 enum {
@@ -97,6 +98,7 @@ typedef struct st_attr_desc {
  */
 typedef struct st_rr_SOA {
     char name[DOMAIN_LEN_MAX];
+    char au_domain[DOMAIN_LEN_MAX];
     char mail[DOMAIN_LEN_MAX];
 
     int type;
