@@ -27,6 +27,10 @@ endif()
 set(CMAKE_C_FLAGS_DEBUG "$ENV{CFLAGS} -O0 -g -ggdb -DDNS_DEBUG")
 set(CMAKE_C_FLAGS_RELEASE "$ENV{CFLAGS} -O3")
 
+#指定编译结果生成路径
+SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+SET(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+
 #创建定制目标, 执行外部脚本, 从而创建统计模块儿需要的信息
 #<TAKE CARE!!!>由于没有输出, 此命令总是被执行
 ADD_CUSTOM_TARGET(creatStat
@@ -34,6 +38,33 @@ ADD_CUSTOM_TARGET(creatStat
     "${CMAKE_SOURCE_DIR}/create_statistics_mod.py"
     "${ENGINE_TYPE}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+
+#创建定制目标, 编译依赖对象
+set(REDIS_SRC "${CMAKE_SOURCE_DIR}/deps/redis")
+set(REDIS_SERVER "redis-server")
+set(REDIS_CLI "libhiredis.a")
+set(REDIS_SERVER_SRC "${REDIS_SRC}/src/${REDIS_SERVER}")
+set(REDIS_CLI_SRC "${REDIS_SRC}/deps/hiredis/${REDIS_CLI}")
+set(REDIS_SERVER_DST "${CMAKE_BINARY_DIR}/bin/${REDIS_SERVER}")
+set(REDIS_CLI_DST "${CMAKE_BINARY_DIR}/lib/${REDIS_CLI}")
+if((NOT EXISTS ${REDIS_SERVER_DST}) OR (NOT EXISTS ${REDIS_CLI_DST}))
+    message(STATUS "building ${REDIS_SERVER_SRC}")
+
+    execute_process(
+        COMMAND make distclean
+        WORKING_DIRECTORY ${REDIS_SRC})
+    execute_process(
+        COMMAND make
+        WORKING_DIRECTORY ${REDIS_SRC})
+
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    file(RENAME ${REDIS_SERVER_SRC} ${REDIS_SERVER_DST})
+
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    file(RENAME ${REDIS_CLI_SRC} ${REDIS_CLI_DST})
+    message(STATUS "done")
+endif()
+
 
 #指定编译子目录, 并保证统计信息模块儿先于log编译, 因为log中会引用
 #creatStat任务的结果(生成的头文件)
