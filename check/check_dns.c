@@ -150,8 +150,7 @@ START_TEST (test_add_dns_answer)
             "%s", "a.a.com.");
     tmp_pkt_info->q_type = TYPE_A;
     tmp_pkt_info->q_class = CLASS_IN;
-    tmp_pkt_info->rr_res_cnt = 1;
-    tmp_pkt_info->rr_res_ttl = 86400;
+    tmp_pkt_info->rr_res_cnt = RR_PER_TYPE_MAX;
     for (int i=0; i<RR_PER_TYPE_MAX; i++) {
         struct in_addr addr;
         char ip_val[64];
@@ -159,6 +158,7 @@ START_TEST (test_add_dns_answer)
         snprintf(ip_val, sizeof(ip_val), "%s%d", "192.168.0.", i + 1);
         (void)inet_pton(AF_INET, ip_val, (void *)&addr);
         tmp_pkt_info->rr_res[i].ip4 = addr.s_addr;
+        tmp_pkt_info->rr_res_ttl[i] = 86400;
     }
 
     tmp_pos = tmp_pkt_info->cur_pos;

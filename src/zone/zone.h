@@ -93,59 +93,66 @@ typedef struct st_attr_desc {
     int value;              /* RFC值 */
 }ATTR_DESC;
 
-/**
- * 对应xxx.zone文件中域的记录信息
- */
-typedef struct st_rr_SOA {
-    char name[DOMAIN_LEN_MAX];
-    char au_domain[DOMAIN_LEN_MAX];
-    char mail[DOMAIN_LEN_MAX];
 
+typedef struct st_domain_name {
+    char name[DOMAIN_LEN_MAX];
+}DOMAIN_NAME;
+/**
+ * 对应zone配置, 信息取自master.conf和xxx.zone;
+ * 在redis中以字符串(由结构体内容序列化得到)格式存储
+ * <NOTE>
+ *  1) 从存储角度, ->name字段不是必须的, 放置于此是为了简化
+ *      引用此结构的代码逻辑(如果用到->name的话, 不需要在函
+ *      数调用层次中将此值保存到中间变量)
+ *  2) 本结构与权威域一一对应关系; 
+ *      key: ZONE_INFO->name, value: ZONE_INFO
+ *  3) 所有的权威域名存放在redis的REDIS_AU_ZONE_LIST列表中,
+ *      以方便遍历权威域
+ */
+typedef struct st_zone_info {
+    char name[DOMAIN_LEN_MAX];      /* 域名, 补全为以'.'结尾, 
+                                       必须和$ORIGIN一致 */
+    char au_domain[DOMAIN_LEN_MAX]; /* 域master主机域名 */
+    char mail[DOMAIN_LEN_MAX];      /* 域管理员邮件 */
+    char file[TOKEN_NAME_LEN_MAX];  /* 域配置文件xxx.zone */
+
+    /* SOA域信息 */
     int type;
     int rr_class;
     int ttl;
-
     int serial;
     int refresh;
     int retry;
     int expire;
     int minimum;
-}RR_SOA;
-typedef struct st_rr_data {
+
+    /* 其他信息 */
+    int default_ttl;                /* 对应$TTL, 本域RR的默认TTL */
+    unsigned int dev_type:1;        /* 地位: master or slave */
+    unsigned int use_origin:1;      /* 是否使用了$ORIGIN关键字? */
+}ZONE_INFO;
+
+/**
+ * 对应RR配置, 信息取自xxx.zone; 在redis中以字符串的形式存储, 不过
+ * 此字符串对应'RR_INFO[]'数组的序列化结果, 因为每个域名可能对应多
+ * 条RR记录
+ * <NOTE>
+ *  1) 从存储角度, ->name字段不是必须的, 目的同ZONE_INFO->name 
+ *  2) 本结构与域名多对一关系; 
+ *      key: RR_INFO->name, value: RR_INFO[]
+ *  3) 属于某个权威域的所有域名, 存储在散列表REDIS_RR_AU_LIST中,
+ *      字段值为权威域名, 值为子域名列表结构(RR_NAME[])的序列化结
+ *      果
+ */
+typedef struct st_RR_conf {
+    char name[DOMAIN_LEN_MAX];      /* RR域名 */
     int type;
     int rr_class;
     int ttl;
     union{
         uint32_t ip4;
-    }data[RR_PER_TYPE_MAX];
-    int cnt;                        /* data[]计数 */
-}RR_DATA;
-typedef struct st_rr {
-    char name[LABEL_LEN_MAX + 1];   /* 子域名, magic 1: 结尾\0 */
-    RR_DATA data[RR_TYPE_MAX +1];   /* TYPE_X类型->索引, 参考
-                                       type_to_arr_index[];
-                                       magic 1: 哨兵元素 */
-}RR;
-typedef struct st_zone {
-    char name[DOMAIN_LEN_MAX];          /* 权威域名, 补全以.结尾 */
-    char origin_name[DOMAIN_LEN_MAX];   /* 对应$ORIGIN, 补全以.结尾 */
-    int ttl;                            /* 对应$TTL, 默认TTL */
-
-    int rr_offset;                      /* 第一条RR记录在共享内存AREA_RR */
-    int rr_cnt;                         /* 区域的偏移, 单位: 记录个数 */
-
-    RR_SOA soa;                         /* SOA记录 */
-}ZONE;
-
-/**
- * 对应master.conf文件中域的配置信息
- */
-typedef struct st_zone_info {
-    char name[TOKEN_NAME_LEN_MAX];  /* 域名, 补全为以'.'结尾 */
-    char file[TOKEN_NAME_LEN_MAX];  /* 域配置文件xxx.zone */
-
-    unsigned int dev_type:1;        /* 地位: master or slave */
-}ZONE_CFG;
+    }data;
+}RR_INFO;
 
 /**
  * 定义.conf/.zone文件支持的元字符及处理逻辑
@@ -165,7 +172,14 @@ typedef struct st_cfg_token {
  * @retval: RET_OK/RET_ERR
  */
 int zone_cfg_parse(void);
-void print_cfg_parse_res(void);
+/**
+ * 保存权威域的解析结果
+ * @param zone_info: [in], 权威域信息
+ * @retval: RET_OK/RET_ERR
+ */
+int save_zone_info(ZONE_INFO *zone_info);
+int print_zone_info(void *zone_info_p);
+
 
 /**
  * 解析域记录
@@ -173,7 +187,8 @@ void print_cfg_parse_res(void);
  * @retval: RET_OK/RET_ERR
  */
 int zone_parse(void);
-void print_zone_parse_res(void);
+int save_rr_info(RR_INFO *rr_info, ZONE_INFO *zone_info);
+int print_rr_info(void *rr_info);
 
 /**
  * 由RFC索引, 获取RR属性对应的属性名字
@@ -249,25 +264,23 @@ int get_a_token_str(char **buf, char *token_res, bool *multi_comm);
 
 /**
  * 由域名获取对应的域配置信息结构
- * @param zone_name: [in], 域名
- * @retval: NULL/查找结果
+ * @param domain: [in], 域名
+ * @param zone_info: [in][out], 查询的结果
+ * @retval: RET_OK/RET_ERR
  */
-ZONE_CFG *get_zone_cfg(char *zone_name);
-
-/**
- * 获取域信息结构
- * @param au_domain: [in], 权威域名
- * @retval: NULL/ZONE结构指针
- */
-ZONE *get_zone(char *au_domain);
+int get_zone_info(char *domain, ZONE_INFO *zone_info);
 
 /**
  * 获取RR记录
- * @param zone: [in], 权威域配置信息
- * @param sub_domain: [in], 待查找的子域名
- * @retval: NULL/RR结构指针
+ * @param domain: [in], 待查找的子域名
+ * @param rr_info: [in][out], 查找的结果
+ * @param num: [in][out], rr_info[]的大小
+ * @retval: RET_OK/RET_ERR
+ *
+ * @NOTE
+ *  1) rr_info[]为传入参数
  */
-RR *get_rr(ZONE *zone, const char *sub_domain);
+int get_rr_info(char *domain, RR_INFO *rr_info, int *num);
 
 /**
  * RR的TYPE_XXX转换为RR->data[]/types[]的索引

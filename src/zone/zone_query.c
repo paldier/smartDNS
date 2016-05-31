@@ -10,31 +10,6 @@
 CREATE_STATISTICS(mod_zone, zone_query_c)
 
 
-STAT_FUNC_BEGIN ZONE * get_au_zone(char *domain)
-{
-    SDNS_STAT_TRACE();
-    assert(domain);
-
-    char *au_domain = domain;
-    ZONE *zone = NULL;
-
-    while(au_domain) {
-        zone = get_zone(au_domain);
-        if (zone) {
-            break;
-        }
-
-        au_domain = strchr(au_domain, '.');
-        if (au_domain) {
-            au_domain += 1;     /* 跳过'.' */
-        }
-    }
-
-    return zone;
-}STAT_FUNC_END
-
-/***********************GLB FUNC*************************/
-
 STAT_FUNC_BEGIN int pass_acl(void *pkt)
 {
     SDNS_STAT_TRACE();
@@ -49,33 +24,29 @@ STAT_FUNC_BEGIN int query_zone(void *pkt)
     SDNS_STAT_TRACE();
     assert(pkt);
 
-    char sub_domain[LABEL_LEN_MAX + 1];
-    char *au_domain;
     PKT_INFO *pkt_info = &((PKT *)pkt)->info;
-    ZONE *zone;
-    RR *rr;
-    RR_DATA *rr_data;
+    RR_INFO rr_info[RR_PER_TYPE_MAX];
+    int res_num = RR_PER_TYPE_MAX;
+    int tmp_ret;
 
-    zone = get_au_zone(pkt_info->domain);
-    if (zone == NULL) {
-        SDNS_STAT_INFO("NULL au zone, [%s]", pkt_info->domain);
+    rr_info[0].type = pkt_info->q_type;
+    rr_info[0].rr_class = pkt_info->q_class;
+    tmp_ret = get_rr_info(pkt_info->domain, rr_info, &res_num);
+    if (tmp_ret == RET_ERR || res_num == 0) {
+        char tmp_stat_msg[STAT_MSG_LEN];
+        snprintf(tmp_stat_msg, sizeof(tmp_stat_msg),
+                "NOT found rr info, [domain: %s]/[type: %d]/[class: %d]",
+                pkt_info->domain, pkt_info->q_type, pkt_info->q_class);
+        SDNS_STAT_INFO("%s", tmp_stat_msg);
         return RET_ERR;
     }
-
-    au_domain = strstr(pkt_info->domain, zone->name);
-    snprintf(sub_domain, au_domain - pkt_info->domain, 
-            "%s", pkt_info->domain);
-    rr = get_rr(zone, sub_domain);
-    if (rr == NULL) {
-        SDNS_STAT_INFO("NULL RR, [sub-dom: %s]", sub_domain);
-        return RET_ERR;
+    
+    pkt_info->rr_res_cnt = res_num;
+    for (int i=0; i<res_num; i++) {
+        pkt_info->rr_res_ttl[i] = rr_info[i].ttl;
+        SDNS_MEMCPY(&pkt_info->rr_res[i], &rr_info[i].data,
+                sizeof(pkt_info->rr_res[i]));
     }
-    rr_data = &rr->data[get_arr_index_by_type(pkt_info->q_type)];
-
-    pkt_info->rr_res_cnt = rr_data->cnt;
-    pkt_info->rr_res_ttl = rr_data->ttl;
-    SDNS_MEMCPY(pkt_info->rr_res, rr_data->data,
-            sizeof(pkt_info->rr_res[0]) * pkt_info->rr_res_cnt);
 
     return RET_OK;
 }STAT_FUNC_END

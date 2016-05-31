@@ -22,7 +22,17 @@ int clear_mask_signal(void);
  * @param: void
  * @retval: RET_OK/RET_ERR
  */
-int process_signals();
+int process_signals(void);
+
+/**
+ * 清理子进程
+ */
+void kill_child_all(void);
+
+/**
+ * 处理传入参数-s
+ */
+void process_option_signal(void);
 
 #endif
 

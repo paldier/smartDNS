@@ -54,7 +54,7 @@ if((NOT EXISTS ${REDIS_SERVER_DST}) OR (NOT EXISTS ${REDIS_CLI_DST}))
         COMMAND make distclean
         WORKING_DIRECTORY ${REDIS_SRC})
     execute_process(
-        COMMAND make
+        COMMAND make -j 8
         WORKING_DIRECTORY ${REDIS_SRC})
 
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -64,12 +64,11 @@ if((NOT EXISTS ${REDIS_SERVER_DST}) OR (NOT EXISTS ${REDIS_CLI_DST}))
     file(RENAME ${REDIS_CLI_SRC} ${REDIS_CLI_DST})
     message(STATUS "done")
 endif()
-
+link_directories(${CMAKE_BINARY_DIR}/lib)
 
 #指定编译子目录, 并保证统计信息模块儿先于log编译, 因为log中会引用
 #creatStat任务的结果(生成的头文件)
 add_subdirectory(src)
-add_dependencies(log creatStat)
 
 #编译单元测试
 find_package(Check)

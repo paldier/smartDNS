@@ -85,7 +85,7 @@ STAT_FUNC_BEGIN int add_dns_answer(PKT *pkt)
         rr_ans = (DNS_AN *)(pos + 2);
         rr_ans->type = htons(pkt_info->q_type);
         rr_ans->rr_class = htons(pkt_info->q_class);
-        rr_ans->ttl = htonl(pkt_info->rr_res_ttl);
+        rr_ans->ttl = htonl(pkt_info->rr_res_ttl[i]);
         rr_ans->data_len = htons(4);    /* magic 4: A记录长度 */
         SDNS_MEMCPY(rr_ans->data, &pkt_info->rr_res[i].ip4, rr_ans->data_len);
 

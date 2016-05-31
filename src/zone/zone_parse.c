@@ -1,9 +1,10 @@
 #include <libgen.h>         /* for dirname() */
 #include "util_glb.h"
-#include "mem_glb.h"
+#include "monitor_glb.h"
 #include "log_glb.h"
 #include "zone_glb.h"
 #include "zone.h"
+#include "hiredis.h"
 #include "zone_parse.h"
 
 /* 域配置文件*.zone非RR记录关键字 */
@@ -19,9 +20,9 @@ static CFG_TYPE s_rr_key_arr[] = {
     {NULL, NULL}
 };
 
-int set_glb_default_ttl(void *zone, char *val)
+int set_glb_default_ttl(void *zone_info, char *val)
 {
-    assert(zone);
+    assert(zone_info);
     assert(val);
     /* val值示例: "\t 86400 ;24 hours could have been written as 24h or 1d" */
     char token[TOKEN_NAME_LEN_MAX];
@@ -37,14 +38,14 @@ int set_glb_default_ttl(void *zone, char *val)
         SDNS_LOG_ERR("(%s) NOT int!", token);
         return RET_ERR;
     }
-    ((ZONE *)zone)->ttl = atoi(token);
+    ((ZONE_INFO *)zone_info)->default_ttl = atoi(token);
 
     return RET_OK;
 }
 
-int set_glb_au_domain_suffix(void *zone, char *val)
+int set_glb_au_domain_suffix(void *zone_info, char *val)
 {
-    assert(zone);
+    assert(zone_info);
     assert(val);
     /* val值示例: " example.com.*/
     char token[TOKEN_NAME_LEN_MAX];
@@ -60,45 +61,52 @@ int set_glb_au_domain_suffix(void *zone, char *val)
         return RET_ERR;
     }
 
-    snprintf(((ZONE *)zone)->origin_name, 
-            sizeof(((ZONE *)zone)->origin_name), "%s", token);
+    if (strcmp(token, ((ZONE_INFO *)zone_info)->name)) {
+        SDNS_LOG_ERR("$ORIGIN[%s] must be the same with au_domain[%s]!", 
+                token, ((ZONE_INFO *)zone_info)->name);
+        return RET_ERR;
+    }
+    ((ZONE_INFO *)zone_info)->use_origin = 1;
 
     return RET_OK;
 }
 
-int set_rr_name(void *rr, char *val)
+int set_rr_name(void *rr_info, char *val)
 {
-    assert(rr);
+    assert(rr_info);
     assert(val);
 
-    snprintf(((RR *)rr)->name, sizeof(((RR *)rr)->name), "%s", val);
+    snprintf(((RR_INFO *)rr_info)->name, 
+            sizeof(((RR_INFO *)rr_info)->name), "%s", val);
 
     return RET_OK;
 }
 
-int set_rr_ttl(void *rr, char *val)
+int set_rr_ttl(void *rr_info, char *val)
 {
-    assert(rr);
+    assert(rr_info);
     assert(val);
 
-    ((RR *)rr)->data[0].ttl = atoi(val);
+    ((RR_INFO *)rr_info)->ttl = atoi(val);
 
     return RET_OK;
 }
 
-int set_rr_rdata(void *rr, char *val)
+int set_rr_rdata(void *rr_info, char *val)
 {
-    assert(rr);
-    assert(val);
-
+    RR_INFO* rr_info_p;
     struct in_addr addr;
     int tmp_ret;
 
-    switch (((RR *)rr)->data[0].type) {
+    assert(rr_info);
+    assert(val);
+    rr_info_p = rr_info;
+
+    switch (rr_info_p->type) {
         case TYPE_A:
             tmp_ret = inet_pton(AF_INET, val, (void *)&addr);
             if (tmp_ret) {
-                ((RR *)rr)->data[0].data[0].ip4 = addr.s_addr;
+                rr_info_p->data.ip4 = addr.s_addr;
                 tmp_ret = RET_OK;
             } else {
                 SDNS_LOG_ERR("(%s): %s", val, 
@@ -108,39 +116,29 @@ int set_rr_rdata(void *rr, char *val)
             break;
         default:
             tmp_ret = RET_ERR;
-            SDNS_LOG_ERR("NOT support type (%d)", ((RR *)rr)->data[0].type);
+            SDNS_LOG_ERR("NOT support type (%d)", rr_info_p->type);
             break;
     }
 
     return tmp_ret;
 }
 
-int set_rr_type_A(void *rr, char *val)
+int set_rr_type_A(void *rr_info, char *val)
 {
-    assert(rr);
+    assert(rr_info);
     assert(val);
 
-    ((RR *)rr)->data[0].type = TYPE_A;
+    ((RR_INFO *)rr_info)->type = TYPE_A;
 
     return RET_OK;
 }
 
-int set_rr_type_SOA(void *soa, char *val)
+int set_rr_class_IN(void *rr_info, char *val)
 {
-    assert(soa);
+    assert(rr_info);
     assert(val);
 
-    ((RR_SOA *)soa)->type = TYPE_SOA;
-
-    return RET_OK;
-}
-
-int set_rr_class_IN(void *rr, char *val)
-{
-    assert(rr);
-    assert(val);
-
-    ((RR *)rr)->data[0].rr_class = CLASS_IN;
+    ((RR_INFO *)rr_info)->rr_class = CLASS_IN;
 
     return RET_OK;
 }
@@ -204,9 +202,9 @@ int translate_to_int(char *val)
     return res;
 }
 
-int parse_rr(void *rr, char *val)
+int parse_rr(void *rr_info, char *val)
 {
-    assert(rr);
+    assert(rr_info);
     assert(val);
     /** 
      * 几乎所有的RR都包含元素: NAME CLASS TYPE TTL RDATA,
@@ -214,7 +212,7 @@ int parse_rr(void *rr, char *val)
      *
      * A类型RR顺序为: [NAME] [CLASS] TYPE [TTL] RDATA
      */
-    RR *rr_cache_p = rr;
+    RR_INFO *rr_info_p = rr_info;
     char *p_buf = val;
     char token[TOKEN_NAME_LEN_MAX];
     token_handler handler;
@@ -222,10 +220,8 @@ int parse_rr(void *rr, char *val)
     int tmp_ret;
 
     /* 只清空必须项, 其余项继承前一次解析的结果 */
-    rr_cache_p->data[0].type = 0;
-    rr_cache_p->data[0].cnt = 0;
-    SDNS_MEMSET(rr_cache_p->data[0].data, 0, 
-            sizeof(rr_cache_p->data[0].data));
+    rr_info_p->type = 0;
+    rr_info_p->data.ip4 = 0;
 
     /* 处理行内所有的token */
     while (1) {
@@ -249,13 +245,13 @@ int parse_rr(void *rr, char *val)
          * 3) 目前未考虑其他情况, 只是报告WARNNING
          */
         if (handler) {
-            tmp_ret = handler(rr, token);
+            tmp_ret = handler(rr_info_p, token);
         } else if (!need_data) {
-            tmp_ret = set_rr_name(rr, token);
+            tmp_ret = set_rr_name(rr_info_p, token);
         } else if (is_digit(token)) {
-            tmp_ret = set_rr_ttl(rr, token);
+            tmp_ret = set_rr_ttl(rr_info_p, token);
         } else if (need_data) {
-            tmp_ret = set_rr_rdata(rr, token);
+            tmp_ret = set_rr_rdata(rr_info_p, token);
         } else {
             SDNS_LOG_WARN("should NOT be here! [%s]/[%s]", 
                     val, token);
@@ -278,10 +274,10 @@ int parse_rr(void *rr, char *val)
     return RET_OK;
 }
 
-int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
+int parse_soa_rr(char *buf, ZONE_INFO *zone_info, int *machine_state)
 {
     assert(buf);
-    assert(zone);
+    assert(zone_info);
     assert(machine_state);
     assert(*machine_state > PARSE_ZONE_BEFORE_SOA);
     assert(*machine_state < PARSE_ZONE_NORMAL_RR);
@@ -296,11 +292,13 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
             return RET_ERR;
         }
         if (strcmp(token, "@") == 0) {
-            snprintf(zone->soa.name, sizeof(zone->soa.name), 
-                    "%s", zone->name); 
+            ;/* do nothing */
         } else {
-            snprintf(zone->soa.name, sizeof(zone->soa.name), 
-                    "%s", token); 
+            if (strcmp(token, zone_info->name)) {
+                SDNS_LOG_ERR("SOA RR[%s] must be the same as au domain[%s]",
+                        token, zone_info->name);
+                return RET_ERR;
+            }
         }
 
         tmp_ret = get_a_token_str(&buf, token, NULL);
@@ -313,7 +311,7 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
             SDNS_LOG_ERR("SOA TTL format err! [%s]/[%s]", buf, token);
             return RET_ERR;
         }
-        zone->soa.ttl = tmp_ret;
+        zone_info->ttl = tmp_ret;
 
         tmp_ret = get_a_token_str(&buf, token, NULL);
         if (tmp_ret != RET_OK) {
@@ -321,7 +319,7 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
             return RET_ERR;
         }
         if (strcmp(token, "IN") == 0) {
-            zone->soa.rr_class = CLASS_IN;
+            zone_info->rr_class = CLASS_IN;
         } else {
             SDNS_LOG_ERR("SOA class format err! [%s]/[%s]", buf, token);
             return RET_ERR;
@@ -333,7 +331,7 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
             return RET_ERR;
         }
         if (strcmp(token, "SOA") == 0) {
-            zone->soa.type = TYPE_SOA;
+            zone_info->type = TYPE_SOA;
         } else {
             SDNS_LOG_ERR("SOA type format err! [%s]/[%s]", buf, token);
             return RET_ERR;
@@ -344,7 +342,7 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
             SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
             return RET_ERR;
         }
-        snprintf(zone->soa.au_domain, sizeof(zone->soa.au_domain), 
+        snprintf(zone_info->au_domain, sizeof(zone_info->au_domain), 
                 "%s", token); 
 
         tmp_ret = get_a_token_str(&buf, token, NULL);
@@ -352,7 +350,7 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
             SDNS_LOG_ERR("SOA RR format err! [%s]", buf);
             return RET_ERR;
         }
-        snprintf(zone->soa.mail, sizeof(zone->soa.mail), "%s", token); 
+        snprintf(zone_info->mail, sizeof(zone_info->mail), "%s", token); 
     } else if (*machine_state == PARSE_ZONE_SOA_RR_SERIAL
             || *machine_state == PARSE_ZONE_SOA_RR_REFRESH
             || *machine_state == PARSE_ZONE_SOA_RR_RETRY
@@ -368,10 +366,11 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
             SDNS_LOG_ERR("SOA serial format err! [%s]/[%s]", buf, token);
             return RET_ERR;
         }
-        ((int *)(&(zone->soa.serial)))[*machine_state 
+        ((int *)(&(zone_info->serial)))[*machine_state 
             - PARSE_ZONE_SOA_RR_SERIAL] = tmp_ret;
     } else if (*machine_state == PARSE_ZONE_SOA_RR_END) {
-        ;   /* do nothing */
+        /* 权威域信息解析完毕, 再次保存 */
+        save_zone_info(zone_info);
     } else {
         SDNS_LOG_ERR("should NOT here! machine state[%d]", *machine_state);
         return RET_ERR;
@@ -382,157 +381,37 @@ int parse_soa_rr(char *buf, ZONE *zone, int *machine_state)
     return RET_OK;
 }
 
-ZONE *create_zone(char *zone_name)
+int parse_zone_file(void *zone_info)
 {
-    assert(zone_name);
-    ZONE *zone;
-
-    /* 判断是否已存在? */
-    FOR_EACH_AREA(zone, AREA_ZONE) {
-        if (strcmp(zone->name, zone_name) == 0) {
-            SDNS_LOG_ERR("duplicate zone");
-            return NULL;
-        }
-    }
-
-    /* 获取域信息结构 */
-    zone = SDNS_MALLOC_GLB(AREA_ZONE);
-    if (zone == NULL) {
-        SDNS_LOG_ERR("create zone fail");
-        return NULL;
-    }
-    SDNS_MEMSET(zone, 0, sizeof(ZONE));
-    zone->rr_offset = INVALID_OFFSET;
-    snprintf(zone->name, sizeof(zone->name), "%s", zone_name);
-
-    return zone;
-}
-
-RR *create_rr(ZONE *zone, char *rr_name)
-{
-    assert(zone);
-    assert(rr_name);
-    RR *rr;
-    int offset;
-
-    /* 判断是否已存在? */
-    if (zone->rr_offset != INVALID_OFFSET) {
-        FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
-            if (strcmp(rr->name, rr_name) == 0) {
-                SDNS_LOG_ERR("duplicate rr");
-                return NULL;
-            }
-        }
-    }
-
-    /* 获取域信息结构 */
-    rr = SDNS_MALLOC_GLB_OFFSET(AREA_RR, &offset);
-    if (rr == NULL) {
-        SDNS_LOG_ERR("create rr fail");
-        return NULL;
-    }
-    SDNS_MEMSET(rr, 0, sizeof(RR));
-    snprintf(rr->name, sizeof(rr->name), "%s", rr_name);
-    if (zone->rr_offset == INVALID_OFFSET) {
-        zone->rr_offset = offset;
-    }
-    zone->rr_cnt++;
-
-    return rr;
-}
-
-void print_zone_parse_res()
-{
-    char tmp_addr[INET_ADDRSTRLEN];
-    ZONE *zone;
-    RR *rr;
-    RR_DATA *rr_data;
-
-    printf("\n\n");
-    FOR_EACH_AREA(zone, AREA_ZONE) {
-        printf("域名: %s\n", zone->name);
-        if (zone->ttl) {
-            printf("$TTL\t%d\n", zone->ttl);
-        }
-        if (strlen(zone->origin_name)) {
-            printf("$ORIGIN\t%s\n", zone->origin_name);
-        }
-
-        printf("%s %d %s %s %s %s (\n", 
-                strcmp(zone->soa.name, zone->name) == 0?"@":zone->soa.name,
-                zone->soa.ttl,
-                get_class_name(zone->soa.rr_class),
-                get_type_name(zone->soa.type),
-                zone->soa.au_domain,
-                zone->soa.mail
-                );
-        printf("\t\t\t\t%d\n", zone->soa.serial);
-        printf("\t\t\t\t%d\n", zone->soa.refresh);
-        printf("\t\t\t\t%d\n", zone->soa.retry);
-        printf("\t\t\t\t%d\n", zone->soa.expire);
-        printf("\t\t\t\t%d\n", zone->soa.minimum);
-        printf("\t\t\t\t)\n");
-
-        FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
-            for (int i=0; i<RR_TYPE_MAX; i++) {
-                rr_data = &(rr->data[i]);
-
-                if (rr_data->cnt == 0) {
-                    continue;
-                }
-
-                for (int j=0; j<rr_data->cnt; j++) {
-                    printf("%s\t%s\t%s\t%d\t%s\n", 
-                            rr->name,
-                            get_class_name(rr_data->rr_class),
-                            get_type_name(rr_data->type),
-                            rr_data->ttl,
-                            inet_ntop(AF_INET, &rr_data->data[j].ip4,
-                                tmp_addr, INET_ADDRSTRLEN)
-                          );
-                }
-            }
-        }
-    }
-}
-
-int parse_zone_file(char *zone_name, char *zone_file)
-{
-    assert(zone_name);
-    assert(zone_file);
-    RR rr_cache_parse_res;
-    RR *tmp_rr;
-    ZONE *zone;
     FILE *fd;
+    ZONE_INFO *zone_info_p;
+    RR_INFO rr_info;
     char tmp_buf[LINE_LEN_MAX];
     int parse_machine_state;
     int tmp_ret;
 
-    if (strlen(zone_name) == 0
-            || strlen(zone_file) == 0) {
+
+    assert(zone_info);
+    zone_info_p = zone_info;
+    if (strlen(zone_info_p->name) == 0
+            || strlen(zone_info_p->file) == 0) {
         SDNS_LOG_ERR("param err, name(%s), file (%s)", 
-                zone_name, zone_file);
+                zone_info_p->name, zone_info_p->file);
         return RET_ERR;
     }
-
     parse_machine_state = PARSE_ZONE_BEFORE_SOA;
-    SDNS_MEMSET(&rr_cache_parse_res, 0, sizeof(rr_cache_parse_res));
+    SDNS_MEMSET(&rr_info, 0, sizeof(rr_info));
 
     /* 构建文件绝对路径 */
     tmp_ret = snprintf(tmp_buf, sizeof(tmp_buf), "%s", 
             get_glb_vars()->conf_file);
     tmp_ret = strlen(dirname(tmp_buf));
-    snprintf(tmp_buf + tmp_ret, LINE_LEN_MAX - tmp_ret, "/%s", zone_file);
+    snprintf(tmp_buf + tmp_ret, LINE_LEN_MAX - tmp_ret, "/%s", 
+            zone_info_p->file);
     fd = fopen(tmp_buf, "r");
     if (fd == NULL) {
         SDNS_LOG_ERR("open [%s] file failed! [%s]", 
                 tmp_buf, strerror(errno));
-        return RET_ERR;
-    }
-
-    zone = create_zone(zone_name);
-    if (zone == NULL) {
-        SDNS_LOG_ERR("create zone failed");
         return RET_ERR;
     }
 
@@ -556,7 +435,7 @@ int parse_zone_file(char *zone_name, char *zone_file)
 
             handler = get_token_handler(s_zone_key_arr, key);
             if (handler) {
-                tmp_ret = handler(zone, buf_p);
+                tmp_ret = handler(zone_info_p, buf_p);
             } else {
                 parse_machine_state = PARSE_ZONE_SOA_RR;
             }
@@ -565,7 +444,7 @@ int parse_zone_file(char *zone_name, char *zone_file)
         /* 解析SOA记录 */
         if (parse_machine_state >= PARSE_ZONE_SOA_RR
                 && parse_machine_state < PARSE_ZONE_NORMAL_RR) {
-            tmp_ret = parse_soa_rr(tmp_buf, zone, &parse_machine_state);
+            tmp_ret = parse_soa_rr(tmp_buf, zone_info_p, &parse_machine_state);
             if (tmp_ret == RET_ERR) {
                 SDNS_LOG_ERR("parse SOA err! [%s]", tmp_buf);
                 return RET_ERR;
@@ -574,7 +453,7 @@ int parse_zone_file(char *zone_name, char *zone_file)
 
         /* 解析普通RR记录 */
         if (parse_machine_state == PARSE_ZONE_NORMAL_RR) {
-            tmp_ret = parse_rr(&rr_cache_parse_res, tmp_buf);
+            tmp_ret = parse_rr(&rr_info, tmp_buf);
             if (tmp_ret == RET_ERR) { 
                 SDNS_LOG_ERR("conf line format err! [%s]", tmp_buf);
                 return RET_ERR;
@@ -583,37 +462,23 @@ int parse_zone_file(char *zone_name, char *zone_file)
                 continue;
             }
 
-            /* 创建RR, 不直接调用create_rr(), 避免报"maybe duplicate" */
-            tmp_rr = get_rr(zone, rr_cache_parse_res.name);
-            if (tmp_rr == NULL) {
-                tmp_rr = create_rr(zone, rr_cache_parse_res.name);
+            /* 采用默认ttl??? */
+            if (rr_info.ttl == 0) {
+                rr_info.ttl = zone_info_p->default_ttl;
             }
-            if (tmp_rr == NULL) {
-                SDNS_LOG_ERR("create rr failed");
-                return RET_ERR;
+            /* 拓展域名 */
+            if (rr_info.name[strlen(rr_info.name) - 1] != '.') {
+                snprintf(&rr_info.name[strlen(rr_info.name)], 
+                        sizeof(rr_info.name) - strlen(rr_info.name),
+                        ".%s", zone_info_p->name);
             }
+            /* 保存rr记录 */
 
-            /* 拷贝数据 */
-            RR_DATA *tmp_rr_cache_data = &rr_cache_parse_res.data[0];
-            RR_DATA *tmp_rr_data = 
-                &(tmp_rr->data[get_arr_index_by_type(
-                            tmp_rr_cache_data->type)]);
-            if (tmp_rr_data->cnt >= RR_PER_TYPE_MAX) {
-                SDNS_LOG_ERR("too many rr, [%s]/[%d]", 
-                        rr_cache_parse_res.name, tmp_rr_data->cnt);
+            if (save_rr_info(&rr_info, zone_info_p) == RET_ERR) {
+                SDNS_LOG_ERR("save rr info failed! [%s]", rr_info.name);
                 return RET_ERR;
             }
-            if (tmp_rr_cache_data->ttl == 0) {
-                tmp_rr_cache_data->ttl = zone->ttl;
-            }
-            tmp_rr_data->type = tmp_rr_cache_data->type;
-            tmp_rr_data->rr_class = tmp_rr_cache_data->rr_class;
-            tmp_rr_data->ttl = tmp_rr_cache_data->ttl;
-            SDNS_MEMCPY(&tmp_rr_data->data[tmp_rr_data->cnt], 
-                    &tmp_rr_cache_data->data[0], 
-                    sizeof(tmp_rr_cache_data->data[0]));
-            tmp_rr_data->cnt++;
-        } 
+        }
 
         if (parse_machine_state >= PARSE_ZONE_MAX) {
             SDNS_LOG_ERR("wrong parse state, [%d]", parse_machine_state);
@@ -628,17 +493,57 @@ int parse_zone_file(char *zone_name, char *zone_file)
 
 int zone_parse()
 {
-    ZONE_CFG *zone_cfg;
-    int tmp_ret;
-
-    FOR_EACH_AREA(zone_cfg, AREA_ZONE_CFG) {
-        tmp_ret = parse_zone_file(zone_cfg->name, zone_cfg->file);
-        if (tmp_ret == RET_ERR) {
-            SDNS_LOG_ERR("parse zone[%s] file[%s] failed",
-                    zone_cfg->name, zone_cfg->file);
-            return RET_ERR;
-        }
+    int parse_zone_by_name(void *name)
+    {
+        return dispose_binary_in_str((char *)name, parse_zone_file);
     }
+
+    return traverse_binary_str(REDIS_AU_ZONE_LIST,
+            parse_zone_by_name, sizeof(DOMAIN_NAME));
+}
+
+int save_rr_info(RR_INFO *rr_info, ZONE_INFO *zone_info)
+{
+    assert(rr_info);
+    assert(zone_info);
+    if (rr_info->name[0] == 0 || zone_info->name[0] == 0) {
+        return RET_OK;
+    }
+
+    /* 清空多余字节, 方便后续append_binary_to_str()调用去重判断 */
+    SDNS_MEMSET(&rr_info->name[strlen(rr_info->name)], 0, 
+            sizeof(rr_info->name) - strlen(rr_info->name));
+
+    if (append_binary_to_str(rr_info->name, rr_info, 
+                sizeof(RR_INFO)) == RET_ERR) {
+        SDNS_LOG_ERR("add rr info failed");
+        return RET_ERR;
+    }
+    if (append_binary_in_hash(REDIS_RR_AU_LIST, zone_info->name,
+                rr_info->name, sizeof(DOMAIN_NAME)) == RET_ERR) {
+        SDNS_LOG_ERR("add rr info name failed");
+        return RET_ERR;
+    }
+
+    return RET_OK;
+}
+
+int print_rr_info(void *rr_info)
+{
+    char tmp_addr[INET_ADDRSTRLEN];
+    RR_INFO *rr_info_p;
+
+    assert(rr_info);
+    rr_info_p = rr_info;
+
+    printf("%s\t%s\t%s\t%d\t%s\n", 
+            rr_info_p->name,
+            get_class_name(rr_info_p->rr_class),
+            get_type_name(rr_info_p->type),
+            rr_info_p->ttl,
+            inet_ntop(AF_INET, &rr_info_p->data.ip4,
+                tmp_addr, INET_ADDRSTRLEN)
+          );
 
     return RET_OK;
 }

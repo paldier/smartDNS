@@ -1,7 +1,6 @@
 #include "check_main.h"
 #include "util_glb.h"
 #include "zone_glb.h"
-#include "mem_glb.h"
 #include "log_glb.h"
 #include "zone.h"
 #include "zone_parse.h"
@@ -16,101 +15,51 @@ static void teardown(void)
     ;           /* do nothing */
 }
 
-START_TEST (test_parse_zone_file)
-{
-    ZONE *zone;
-    RR *rr;
-    RR_DATA *rr_data;
-    struct in_addr tmp_addr;
-    char *tmp_ip_str;
-    int tmp_ret;
-
-    shared_mem_init();
-
-    tmp_ret = parse_zone_file("example.com.", "example.zone");
-    ck_assert_int_eq(tmp_ret, RET_OK);
-
-    zone = get_zone("example.com.");
-    ck_assert_int_ne(zone, NULL);
-    ck_assert_str_eq(zone->name, "example.com.");
-    ck_assert_str_eq(zone->origin_name, "example.com.");
-    ck_assert_int_eq(zone->ttl, 86400);
-
-    rr = get_rr(zone, "ns1");
-    ck_assert_int_ne(rr, NULL);
-    ck_assert_str_eq(rr->name, "ns1");
-    rr_data = &(rr->data[get_arr_index_by_type(TYPE_A)]);
-    ck_assert_int_eq(rr_data->type, TYPE_A);
-    ck_assert_int_eq(rr_data->rr_class, CLASS_IN);
-    ck_assert_int_eq(rr_data->ttl, 86400);
-    ck_assert_int_eq(rr_data->cnt, 1);
-    tmp_addr.s_addr = rr_data->data[0].ip4;
-    tmp_ip_str = inet_ntoa(tmp_addr);
-    ck_assert_str_eq(tmp_ip_str, "192.168.0.1");
-
-    rr = get_rr(zone, "foo");
-    ck_assert_int_ne(rr, NULL);
-    ck_assert_str_eq(rr->name, "foo");
-    rr_data = &(rr->data[get_arr_index_by_type(TYPE_A)]);
-    ck_assert_int_eq(rr_data->type, TYPE_A);
-    ck_assert_int_eq(rr_data->rr_class, CLASS_IN);
-    ck_assert_int_eq(rr_data->ttl, 86400);
-    ck_assert_int_eq(rr_data->cnt, 1);
-    tmp_addr.s_addr = rr_data->data[0].ip4;
-    tmp_ip_str = inet_ntoa(tmp_addr);
-    ck_assert_str_eq(tmp_ip_str, "1.2.3.4");
-
-    rr = get_rr(zone, "unexist");
-    ck_assert_int_eq(rr, NULL);
-
-    zone = get_zone("unexist.com.");
-    ck_assert_int_eq(zone, NULL);
-}
-END_TEST
-
 START_TEST (test_set_glb_default_ttl)
 {
-    ZONE tmp_zone;
+    ZONE_INFO tmp_zone;
     char tmp_val[LINE_LEN_MAX];
     int tmp_ret;
 
     snprintf(tmp_val, LINE_LEN_MAX, "%s", "	\t86400 ; ");
     tmp_ret = set_glb_default_ttl(&tmp_zone, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_int_eq(tmp_zone.ttl, 86400);
+    ck_assert_int_eq(tmp_zone.default_ttl, 86400);
 
     snprintf(tmp_val, LINE_LEN_MAX, "%s", "	86400");
     tmp_ret = set_glb_default_ttl(&tmp_zone, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_int_eq(tmp_zone.ttl, 86400);
+    ck_assert_int_eq(tmp_zone.default_ttl, 86400);
 
     snprintf(tmp_val, LINE_LEN_MAX, "%s", "	86400;");
     tmp_ret = set_glb_default_ttl(&tmp_zone, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_int_eq(tmp_zone.ttl, 86400);
+    ck_assert_int_eq(tmp_zone.default_ttl, 86400);
 }
 END_TEST
 
 START_TEST (test_set_glb_au_domain_suffix)
 {
-    ZONE tmp_zone;
+    ZONE_INFO tmp_zone;
     char tmp_val[LINE_LEN_MAX];
     int tmp_ret;
+
+    snprintf(tmp_zone.name, sizeof(tmp_zone.name), "example.com.");
     
     snprintf(tmp_val, LINE_LEN_MAX, "%s", " example.com.");
     tmp_ret = set_glb_au_domain_suffix(&tmp_zone, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_str_eq(tmp_zone.origin_name, "example.com.");
+    ck_assert_int_eq(tmp_zone.use_origin, 1);
 
     snprintf(tmp_val, LINE_LEN_MAX, "%s", " example.com.;");
     tmp_ret = set_glb_au_domain_suffix(&tmp_zone, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_str_eq(tmp_zone.origin_name, "example.com.");
+    ck_assert_int_eq(tmp_zone.use_origin, 1);
 
     snprintf(tmp_val, LINE_LEN_MAX, "%s", "\t example.com. ; \t");
     tmp_ret = set_glb_au_domain_suffix(&tmp_zone, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
-    ck_assert_str_eq(tmp_zone.origin_name, "example.com.");
+    ck_assert_int_eq(tmp_zone.use_origin, 1);
 }
 END_TEST
 
@@ -172,15 +121,13 @@ END_TEST
 
 START_TEST (test_parse_rr_A)
 {
-    RR tmp_rr;
-    RR_DATA *tmp_rr_data;
+    RR_INFO tmp_rr;
     char tmp_val[LINE_LEN_MAX];
     char *tmp_ip_str;
     struct in_addr tmp_addr;
     int tmp_ret;
 
     memset(&tmp_rr, 0, sizeof(tmp_rr));
-    tmp_rr_data = &tmp_rr.data[0];
 
     /* normal */
     snprintf(tmp_val, LINE_LEN_MAX, 
@@ -188,10 +135,10 @@ START_TEST (test_parse_rr_A)
     tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_str_eq(tmp_rr.name, "www");
-    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data->rr_class, CLASS_IN);
-    ck_assert_int_eq(tmp_rr_data->ttl, 30);
-    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
+    ck_assert_int_eq(tmp_rr.type, TYPE_A);
+    ck_assert_int_eq(tmp_rr.rr_class, CLASS_IN);
+    ck_assert_int_eq(tmp_rr.ttl, 30);
+    tmp_addr.s_addr = tmp_rr.data.ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 
@@ -202,10 +149,10 @@ START_TEST (test_parse_rr_A)
     tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_str_eq(tmp_rr.name, "www");
-    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data->rr_class, CLASS_IN);
-    ck_assert_int_eq(tmp_rr_data->ttl, 0);
-    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
+    ck_assert_int_eq(tmp_rr.type, TYPE_A);
+    ck_assert_int_eq(tmp_rr.rr_class, CLASS_IN);
+    ck_assert_int_eq(tmp_rr.ttl, 0);
+    tmp_addr.s_addr = tmp_rr.data.ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 
@@ -216,10 +163,10 @@ START_TEST (test_parse_rr_A)
     tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_str_eq(tmp_rr.name, "");
-    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data->rr_class, CLASS_IN);
-    ck_assert_int_eq(tmp_rr_data->ttl, 0);
-    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
+    ck_assert_int_eq(tmp_rr.type, TYPE_A);
+    ck_assert_int_eq(tmp_rr.rr_class, CLASS_IN);
+    ck_assert_int_eq(tmp_rr.ttl, 0);
+    tmp_addr.s_addr = tmp_rr.data.ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 
@@ -231,10 +178,10 @@ START_TEST (test_parse_rr_A)
     tmp_ret = parse_rr(&tmp_rr, tmp_val);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_str_eq(tmp_rr.name, "www");
-    ck_assert_int_eq(tmp_rr_data->type, TYPE_A);
-    ck_assert_int_eq(tmp_rr_data->rr_class, 0);
-    ck_assert_int_eq(tmp_rr_data->ttl, 0);
-    tmp_addr.s_addr = tmp_rr_data->data[0].ip4;
+    ck_assert_int_eq(tmp_rr.type, TYPE_A);
+    ck_assert_int_eq(tmp_rr.rr_class, 0);
+    ck_assert_int_eq(tmp_rr.ttl, 0);
+    tmp_addr.s_addr = tmp_rr.data.ip4;
     tmp_ip_str = inet_ntoa(tmp_addr);
     ck_assert_str_eq(tmp_ip_str, "192.168.0.2");
 }
@@ -242,8 +189,7 @@ END_TEST
 
 START_TEST (test_parse_soa_rr)
 {
-    ZONE zone;
-    RR_SOA *rr_soa_p;
+    ZONE_INFO zone;
     char buf[LINE_LEN_MAX];
     int machine_state;
     int tmp_ret;
@@ -251,7 +197,6 @@ START_TEST (test_parse_soa_rr)
     memset(&zone, 0, sizeof(zone));
     snprintf(zone.name, sizeof(zone.name), "%s", "example.com.");
     machine_state = PARSE_ZONE_SOA_RR;
-    rr_soa_p = &zone.soa;
 
     /* normal */
     snprintf(buf, sizeof(buf), 
@@ -259,66 +204,66 @@ START_TEST (test_parse_soa_rr)
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_SERIAL);
-    ck_assert_str_eq(rr_soa_p->name, "example.com.");
-    ck_assert_str_eq(rr_soa_p->au_domain, "ns1.example.com.");
-    ck_assert_str_eq(rr_soa_p->mail, "hostmaster.example.com.");
-    ck_assert_int_eq(rr_soa_p->type, TYPE_SOA);
-    ck_assert_int_eq(rr_soa_p->rr_class, CLASS_IN);
-    ck_assert_int_eq(rr_soa_p->ttl, 3600*24);
+    ck_assert_str_eq(zone.name, "example.com.");
+    ck_assert_str_eq(zone.au_domain, "ns1.example.com.");
+    ck_assert_str_eq(zone.mail, "hostmaster.example.com.");
+    ck_assert_int_eq(zone.type, TYPE_SOA);
+    ck_assert_int_eq(zone.rr_class, CLASS_IN);
+    ck_assert_int_eq(zone.ttl, 3600*24);
 
     snprintf(buf, sizeof(buf), "			      2002022401 ; serial");
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_REFRESH);
-    ck_assert_int_eq(rr_soa_p->serial, 2002022401);
+    ck_assert_int_eq(zone.serial, 2002022401);
 
     snprintf(buf, sizeof(buf), "			      10800 ; refresh, 3h");
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_RETRY);
-    ck_assert_int_eq(rr_soa_p->refresh, 10800);
+    ck_assert_int_eq(zone.refresh, 10800);
     snprintf(buf, sizeof(buf), "			      3h; refresh, 3h");
     machine_state = PARSE_ZONE_SOA_RR_REFRESH;
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_RETRY);
-    ck_assert_int_eq(rr_soa_p->refresh, 10800);
+    ck_assert_int_eq(zone.refresh, 10800);
 
     snprintf(buf, sizeof(buf), "			      900 ; retry, 15m");
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_EXPIRE);
-    ck_assert_int_eq(rr_soa_p->retry, 900);
+    ck_assert_int_eq(zone.retry, 900);
     snprintf(buf, sizeof(buf), "			      15m ; retry, 15m");
     machine_state = PARSE_ZONE_SOA_RR_RETRY;
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_EXPIRE);
-    ck_assert_int_eq(rr_soa_p->retry, 900);
+    ck_assert_int_eq(zone.retry, 900);
 
     snprintf(buf, sizeof(buf), "			      1814400 ; expire, 3w");
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_MINIMUM);
-    ck_assert_int_eq(rr_soa_p->expire, 1814400);
+    ck_assert_int_eq(zone.expire, 1814400);
     snprintf(buf, sizeof(buf), "			      3w ; expire, 3w");
     machine_state = PARSE_ZONE_SOA_RR_EXPIRE;
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_MINIMUM);
-    ck_assert_int_eq(rr_soa_p->expire, 1814400);
+    ck_assert_int_eq(zone.expire, 1814400);
 
     snprintf(buf, sizeof(buf), "			      8400 ; minimum, 2h20m");
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_END);
-    ck_assert_int_eq(rr_soa_p->minimum, 8400);
+    ck_assert_int_eq(zone.minimum, 8400);
     snprintf(buf, sizeof(buf), "			      2h20m ; minimum, 2h20m");
     machine_state = PARSE_ZONE_SOA_RR_MINIMUM;
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
     ck_assert_int_eq(tmp_ret, RET_OK);
     ck_assert_int_eq(machine_state, PARSE_ZONE_SOA_RR_END);
-    ck_assert_int_eq(rr_soa_p->minimum, 8400);
+    ck_assert_int_eq(zone.minimum, 8400);
 
     snprintf(buf, sizeof(buf), "			     )");
     tmp_ret = parse_soa_rr(buf, &zone, &machine_state);
@@ -357,11 +302,6 @@ Suite * zone_suite(void)
     tc_core = tcase_create("parse_soa_rr");
     tcase_add_checked_fixture(tc_core, setup, teardown);
     tcase_add_test(tc_core, test_parse_soa_rr);
-    suite_add_tcase(s, tc_core);
-
-    tc_core = tcase_create("zone_parse");
-    tcase_add_checked_fixture(tc_core, setup, teardown);
-    tcase_add_test(tc_core, test_parse_zone_file);
     suite_add_tcase(s, tc_core);
 
     return s;

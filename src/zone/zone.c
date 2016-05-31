@@ -1,7 +1,8 @@
 #include "util_glb.h"
-#include "mem_glb.h"
+#include "monitor_glb.h"
 #include "log_glb.h"
 #include "zone_glb.h"
+#include "hiredis.h"
 #include "zone.h"
 
 /* 定义添加统计信息 */
@@ -47,37 +48,18 @@ int zone_init()
         }
     }
 
-    if (IS_PROCESS_ROLE(PROCESS_ROLE_MASTER) 
-            && (register_sh_mem_size(AREA_ZONE_CFG, 
-                    sizeof(ZONE_CFG)) == RET_ERR
-                || register_sh_mem_size(AREA_ZONE, sizeof(ZONE)) == RET_ERR
-                || register_sh_mem_size(AREA_RR, sizeof(RR)) == RET_ERR
-               )
-       ) {
-        SDNS_LOG_ERR("register elem size of shared mem, failed");
-        return RET_ERR;
-    }
-    
-    return RET_OK;
-}
-
-int parse_conf_for_test(void)
-{
-    if (create_shared_mem_for_test() == RET_ERR
-            || parse_conf() == RET_ERR) {
-        return RET_ERR;
-    }
-
     return RET_OK;
 }
 
 int parse_conf(void)
 {
+    /* 解析master.conf */
     if (zone_cfg_parse() == RET_ERR) {
         SDNS_LOG_ERR("parse .conf failed");
         return RET_ERR;
     }
 
+    /* 解析xxx.zone */
     if (zone_parse() == RET_ERR) {
         SDNS_LOG_ERR("parse .zone failed");
         return RET_ERR;
@@ -88,8 +70,68 @@ int parse_conf(void)
 
 void print_parse_res()
 {
-    print_cfg_parse_res();
-    print_zone_parse_res();
+    int print_zone_info_by_name(void *name)
+    {
+        return dispose_binary_in_str((char *)name, print_zone_info);
+    }
+    int print_rr_info_by_name(void *name)
+    {
+        return dispose_binary_in_str((char *)name, print_rr_info);
+    }
+    int get_rr_info_by_name(void *name)
+    {
+        return traverse_binary_str((char *)name, print_rr_info_by_name,
+                sizeof(RR_INFO));
+    }
+    int get_rr_names_by_zone_name(void *field)
+    {
+        printf("\n\n");
+        return traverse_hash_binary_str(REDIS_RR_AU_LIST, 
+                (char *)field, get_rr_info_by_name, sizeof(DOMAIN_NAME));
+    }
+
+    traverse_binary_str(REDIS_AU_ZONE_LIST,
+            print_zone_info_by_name,
+            sizeof(DOMAIN_NAME));
+
+    traverse_binary_str(REDIS_AU_ZONE_LIST,
+            get_rr_names_by_zone_name,
+            sizeof(DOMAIN_NAME));
+}
+
+int save_zone_info(ZONE_INFO *zone_info)
+{
+    int tmp_ret;
+
+    assert(zone_info);
+    if (zone_info->name[0] == 0) {
+        return RET_OK;
+    }
+    /* 清空多余字节, 方便后续append_binary_to_str()调用去重判断 */
+    SDNS_MEMSET(&zone_info->name[strlen(zone_info->name)], 0, 
+            sizeof(zone_info->name) - strlen(zone_info->name));
+    SDNS_MEMSET(&zone_info->au_domain[strlen(zone_info->au_domain)], 0, 
+            sizeof(zone_info->au_domain) - strlen(zone_info->au_domain));
+    SDNS_MEMSET(&zone_info->mail[strlen(zone_info->mail)], 0, 
+            sizeof(zone_info->mail) - strlen(zone_info->mail));
+    SDNS_MEMSET(&zone_info->file[strlen(zone_info->file)], 0, 
+            sizeof(zone_info->file) - strlen(zone_info->file));
+
+    tmp_ret = save_binary_in_str(zone_info->name, zone_info, 
+            sizeof(ZONE_INFO));
+    if (tmp_ret == RET_ERR) {
+        SDNS_LOG_ERR("save zone info err, [%s]", zone_info->name);
+        return RET_ERR;
+    }
+
+    tmp_ret = append_binary_to_str(REDIS_AU_ZONE_LIST, zone_info->name, 
+            sizeof(zone_info->name));
+    if (tmp_ret == RET_ERR) {
+        SDNS_LOG_ERR("save au zone name err, [%s]", zone_info->name);
+        return RET_ERR;
+    }
+
+    return RET_OK;
 }
 
 const char* get_attr_name_by_index(ATTR_DESC *attr, int index)
@@ -539,67 +581,66 @@ int get_a_token_str(char **buf, char *token_res, bool *multi_comm)
     return RET_OK;
 }
 
-STAT_FUNC_BEGIN ZONE_CFG * get_zone_cfg(char *zone_name)
+STAT_FUNC_BEGIN int get_zone_info(char *domain, ZONE_INFO *zone_info) 
 {
     SDNS_STAT_TRACE();
-    ZONE_CFG *zone_cfg = NULL;
 
-    if (zone_name == NULL || strlen(zone_name) == 0) {
-        SDNS_STAT_INFO("zone name NULL");
-        return NULL;
-    }
+    int tmp_cnt = 1;
+    assert(domain);
+    assert(zone_info);
 
-    FOR_EACH_AREA(zone_cfg, AREA_ZONE_CFG) {
-        if (strcmp(zone_cfg->name, zone_name) == 0) {
-            return zone_cfg;
+    int filter_zone_info(void *zone_info_mem)
+    {
+        assert(zone_info_mem);
+        ZONE_INFO *tmp_zone_info_p = zone_info_mem;
+
+        if (tmp_cnt > 0) {
+            SDNS_MEMCPY(zone_info, tmp_zone_info_p, sizeof(ZONE_INFO));
+            tmp_cnt--;
+        } else {
+            SDNS_STAT_INFO("MORE zone info");
         }
+
+        return RET_OK;
     }
 
-    SDNS_STAT_INFO("NOT found valid zone_cfg, [%s]", zone_name);
-    return NULL;
-}STAT_FUNC_END
-
-STAT_FUNC_BEGIN ZONE * get_zone(char *au_domain) 
-{
-    SDNS_STAT_TRACE();
-    assert(au_domain);
-    ZONE *zone;
-
-    FOR_EACH_AREA(zone, AREA_ZONE) {
-        if (strcmp(zone->name, au_domain) == 0) {
-            return zone;
-        }
-    }
-
-    SDNS_STAT_INFO("NOT found valid zone, [%s]", au_domain);
-    return NULL;
+    return traverse_binary_str(domain, filter_zone_info, sizeof(ZONE_INFO));
 }STAT_FUNC_END
 
 
-STAT_FUNC_BEGIN RR * get_rr(ZONE *zone, const char *sub_domain)
+STAT_FUNC_BEGIN int get_rr_info(char *domain, RR_INFO *rr_info, int *num)
 {
     SDNS_STAT_TRACE();
-    assert(zone);
-    assert(sub_domain);
-    RR *rr;
 
-    if (zone->rr_offset == INVALID_OFFSET) {
-        SDNS_STAT_INFO("invalid offset");
-        return NULL;
-    }
+    int type, rr_class, tmp_cnt;
 
-    FOR_EACH_AREA_OFFSET(rr, AREA_RR, zone->rr_offset, zone->rr_cnt) {
-        if (strcmp(rr->name, sub_domain) == 0) {
-            return rr;
+    assert(domain);
+    assert(rr_info);
+    assert(num);
+    type = rr_info[0].type;
+    rr_class = rr_info[0].rr_class;
+    tmp_cnt = *num;
+
+    int filter_rr_info(void *rr_info_mem)
+    {
+        assert(rr_info_mem);
+        RR_INFO *tmp_rr_info_p = rr_info_mem;
+
+        if (tmp_rr_info_p->type == type
+                && tmp_rr_info_p->rr_class == rr_class) {
+            if (tmp_cnt > 0) {
+                SDNS_MEMCPY(rr_info, tmp_rr_info_p, sizeof(RR_INFO));
+                rr_info++;
+                tmp_cnt--;
+            } else {
+                SDNS_STAT_INFO("MORE RR info");
+            }
         }
+
+        return RET_OK;
     }
 
-    char tmp_stat_msg[STAT_MSG_LEN];
-    snprintf(tmp_stat_msg, sizeof(tmp_stat_msg), 
-            "NOT found valid RR, [zone: %s][RR: %s]", 
-            zone->name, sub_domain);
-    SDNS_STAT_INFO("%s", tmp_stat_msg);
-    return NULL;
+    return traverse_binary_str(domain, filter_rr_info, sizeof(RR_INFO));
 }STAT_FUNC_END
 
 STAT_FUNC_BEGIN int get_arr_index_by_type(int type)

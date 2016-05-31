@@ -20,7 +20,11 @@
 #define RET_ERR     -1
 
 /* 全局常量 */
-#define DNS_PORT        htons(53)   /* 定义DNS知名端口号 */
+#define DNS_PORT        htons(53)           /* 定义DNS知名端口号 */
+#define REDIS_SERVER_BIN    "redis-server"  /* redis可执行程序名 */
+#define REDIS_SERVER_CONF   "redis.conf"    /* redis配置文件 */
+#define REDIS_AU_ZONE_LIST  "au_zone_list"  /* 所有权威域的域名列表 */
+#define REDIS_RR_AU_LIST    "rr_zone_hash"  /* 域名==>子域名列表 的hash表 */
 
 /* 规格相关 */
 #define LABEL_LEN_MAX   63      /* 域名中单个label长度最大值 */
@@ -34,14 +38,17 @@
 enum{
     PROCESS_ROLE_INVALID = 0,
     PROCESS_ROLE_MASTER,            /* 主进程 */
-    PROCESS_ROLE_WORKER,            /* 查询处理进程 */
     PROCESS_ROLE_MONITOR,           /* 监控进程 */
+    PROCESS_ROLE_WORKER,            /* 查询处理进程 */
     PROCESS_ROLE_SIGNALLER = 1<<8,  /* 信号处理 */
     PROCESS_ROLE_HELPER = 1<<9,     /* 打印帮助 */
     PROCESS_ROLE_TESTER = 1<<10,    /* 测试配置文件格式 */
     PROCESS_ROLE_MAX = 1<<15
 };
 #define PROCESS_ROLE_EXCLUSION_MASK 0xff
+#define SET_CHILD_PROCESS(role, child_pid) do{\
+    get_glb_vars()->child_process[(role)] = (child_pid);\
+}while(0);
 #define SET_PROCESS_ROLE(role) do{\
     uint32_t _tmp_role_ = role;\
     uint32_t _exclusion_part_;\
@@ -94,7 +101,9 @@ typedef struct st_glb_variables{
     uint32_t process_role;          /* 进程角色 */
     char conf_file[CONF_FILE_LEN];  /* 配置文件, -f指定 */
     char signal[SIGNAL_STR_LEN];    /* 处理信号, -s指定 */
-    void *sh_mem;                   /* 共享内存 */
+    pid_t child_process[PROCESS_ROLE_EXCLUSION_MASK];
+                                    /* 子进程的进程号 */
+    void *dummy;                    /* 中间结果暂存??? */
 }GLB_VARS;
 #define INIT_GLB_VARS() do{\
     (void)SDNS_MEMSET(get_glb_vars(), 0, sizeof(GLB_VARS));\
@@ -106,17 +115,7 @@ typedef struct st_glb_variables{
 #define SDNS_REALLOC    realloc 
 #define SDNS_FREE       free
 #define SDNS_MEMCPY     memcpy
-
-/**
- * 获取共享内存的首地址指针
- * @param: void
- * @retval: 共享内存地址
- *
- * @NOTE
- *  1) 理论上, 此函数返回值不为NULL
- *  2) 开发阶段利用assert()保证非NULL
- */
-void *get_shared_mem(void);
+#define SDNS_MEMCMP     memcmp
 
 /**
  * 获取全局结构集合指针

@@ -5,6 +5,6 @@
  * 启动主工作进程
  * @retval: void
  */
-void start_worker();
+void start_worker(void);
 
 #endif

@@ -170,3 +170,39 @@ int process_signals()
     return RET_OK;
 }
 
+void kill_child_all(void)
+{
+    pid_t child_pid;
+
+    for (int i=0; i<PROCESS_ROLE_EXCLUSION_MASK; i++) {
+        if (i == PROCESS_ROLE_MASTER) {
+            continue;
+        }
+        child_pid = get_glb_vars()->child_process[i];
+        if (child_pid && child_pid != getpid()) {
+            SDNS_LOG_WARN("send SIGKILL to [%d] from [%d]", 
+                    child_pid, getpid());
+            (void)kill(child_pid, SIGKILL);
+        }
+    }
+}
+
+void process_option_signal(void)
+{
+    if (strcmp(get_glb_vars()->signal, "stop") == 0) {
+        SDNS_LOG_WARN("option [%s], NOT support yet", 
+                get_glb_vars()->signal);
+    } else if (strcmp(get_glb_vars()->signal, "quit") == 0) {
+        SDNS_LOG_WARN("option [%s], NOT support yet", 
+                get_glb_vars()->signal);
+    } else if (strcmp(get_glb_vars()->signal, "reopen") == 0) {
+        SDNS_LOG_WARN("option [%s], NOT support yet", 
+                get_glb_vars()->signal);
+    } else if (strcmp(get_glb_vars()->signal, "reload") == 0) {
+        SDNS_LOG_WARN("option [%s], NOT support yet", 
+                get_glb_vars()->signal);
+    } else {
+        SDNS_LOG_ERR("invalid option: \"-s %s\"", 
+                get_glb_vars()->signal);
+    }
+}
