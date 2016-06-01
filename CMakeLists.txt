@@ -92,6 +92,7 @@ endif()
 set(GEOIP_LIB_SRC "${CMAKE_SOURCE_DIR}/deps/geoip2")
 set(GEOIP_LIB "libmaxminddb.a")
 set(GEOIP_LIB_H "maxminddb.h")
+set(GEOIP_LIB_H_2 "maxminddb_config.h")
 if(NOT EXISTS ${DEPS_LIB}/${GEOIP_LIB})
     message(STATUS "building ${GEOIP_LIB} ...")
 
@@ -115,6 +116,9 @@ if(NOT EXISTS ${DEPS_LIB}/${GEOIP_LIB})
         WORKING_DIRECTORY ${GEOIP_LIB_SRC})
     execute_process(
         COMMAND cp ./include/${GEOIP_LIB_H} ${DEPS_INCLUDE} 
+        WORKING_DIRECTORY ${GEOIP_LIB_SRC})
+    execute_process(
+        COMMAND cp ./include/${GEOIP_LIB_H_2} ${DEPS_INCLUDE} 
         WORKING_DIRECTORY ${GEOIP_LIB_SRC})
 
     message(STATUS "done")

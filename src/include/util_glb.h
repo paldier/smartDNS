@@ -103,6 +103,7 @@ typedef struct st_glb_variables{
     char signal[SIGNAL_STR_LEN];    /* 处理信号, -s指定 */
     pid_t child_process[PROCESS_ROLE_EXCLUSION_MASK];
                                     /* 子进程的进程号 */
+    void *mmdb;                     /* GeoIP2数据库信息指针 */
     void *dummy;                    /* 中间结果暂存??? */
 }GLB_VARS;
 #define INIT_GLB_VARS() do{\

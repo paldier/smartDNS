@@ -136,6 +136,7 @@ STAT_FUNC_BEGIN int receive_pkt(PKT **pkt)
     tmp_pkt->info.eth_hdr = NULL;
     tmp_pkt->info.ip_hdr = NULL;
     tmp_pkt->info.udp_hdr = NULL;
+    tmp_pkt->info.src_ip.ip4 = s_cli_addr.sin_addr.s_addr;
 
     /* 设置后续处理点 */
     tmp_pkt->info.cur_pos = tmp_pkt->data;

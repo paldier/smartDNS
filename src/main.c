@@ -8,6 +8,7 @@
 #include "zone_glb.h"
 #include "option_glb.h"
 #include "monitor_glb.h"
+#include "sort_glb.h"
 #include "log_glb.h"
 
 
@@ -71,6 +72,11 @@ int main(int argc, char **argv)
     if (set_required_signal() == RET_ERR
             || block_required_signal() == RET_ERR) {
         SDNS_LOG_ERR("signal init failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (sort_init() == RET_ERR) {
+        SDNS_LOG_ERR("sort init failed");
         exit(EXIT_FAILURE);
     }
 
