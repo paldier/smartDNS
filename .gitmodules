@@ -1,3 +1,6 @@
 [submodule "deps/redis"]
 	path = deps/redis
 	url = https://github.com/antirez/redis.git
+[submodule "deps/geoip2"]
+	path = deps/geoip2
+	url = https://github.com/maxmind/libmaxminddb.git

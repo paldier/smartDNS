@@ -3,7 +3,6 @@ aux_source_directory(. MAIN_SRCS)
 
 #指定头文件
 include_directories(${CMAKE_SOURCE_DIR}/src/include)
-include_directories(${CMAKE_SOURCE_DIR}/deps/redis/deps/hiredis)
 
 #指定编译子目录
 add_subdirectory(master)
